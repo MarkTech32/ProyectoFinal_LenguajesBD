@@ -1,0 +1,151 @@
+-- Crear tablas principales (sin dependencias/relaciones)
+
+-- Tabla Empleados
+CREATE TABLE Empleados (
+    id_empleado NUMBER(10) PRIMARY KEY,
+    nombre VARCHAR2(100),
+    apellidos VARCHAR2(100),
+    telefono VARCHAR2(15),
+    correo VARCHAR2(100)
+);
+
+-- Tabla Roles
+CREATE TABLE Roles (
+    id_rol NUMBER(10) PRIMARY KEY,
+    nombre_rol VARCHAR2(100)
+);
+
+-- Tabla Especies
+CREATE TABLE Especies (
+    id_especie NUMBER(10) PRIMARY KEY,
+    nombre_cientifico VARCHAR2(100),
+    familia VARCHAR2(50),
+    habitat_natural VARCHAR2(200),
+    estado_conservacion VARCHAR2(50), -- En peligro, Vulnerable, etc.
+    dieta VARCHAR2(100) -- Carnívoro, Herbívoro, Omnívoro
+);
+
+-- Tabla Medicamentos
+CREATE TABLE Medicamentos (
+    id_medicamento NUMBER(10) PRIMARY KEY,
+    nombre_medicamento VARCHAR2(100),
+    tipo_medicamento VARCHAR2(50),
+    stock_actual NUMBER(5),
+    fecha_vencimiento DATE,
+    proveedor VARCHAR2(100),
+    ubicacion_almacen VARCHAR2(50)
+);
+
+-- ================================================================
+-- Crear tablas con una dependencia/relacion
+-- ================================================================
+
+-- Tabla Empleados_Roles (depende de Empleados y Roles)
+CREATE TABLE Empleados_Roles (
+    id_empleado NUMBER(10),
+    id_rol NUMBER(10),
+    nivel_acceso NUMBER(1), -- 1=Básico, 2=Intermedio, 3=Total
+    zona_asignada VARCHAR2(100),
+    especialidad_medica VARCHAR2(100),
+    area_asignada VARCHAR2(100),
+    cargo VARCHAR2(100),
+    PRIMARY KEY (id_empleado, id_rol),
+    FOREIGN KEY (id_empleado) REFERENCES Empleados(id_empleado),
+    FOREIGN KEY (id_rol) REFERENCES Roles(id_rol)
+);
+
+-- Tabla Rescates (depende de Empleados)
+CREATE TABLE Rescates (
+    id_rescate NUMBER(10) PRIMARY KEY,
+    fecha_rescate DATE,
+    lugar VARCHAR2(150),
+    detalles VARCHAR2(250),
+    id_rescatista NUMBER(10),
+    FOREIGN KEY (id_rescatista) REFERENCES Empleados(id_empleado)
+);
+
+-- Tabla Animales (depende de Especies y Rescates)
+CREATE TABLE Animales (
+    id_animal NUMBER(10) PRIMARY KEY,
+    nombre VARCHAR2(100),
+    id_especie NUMBER(10),
+    raza VARCHAR2(50),
+    edad NUMBER(3),
+    sexo VARCHAR2(10),
+    id_rescate NUMBER(10),
+    FOREIGN KEY (id_especie) REFERENCES Especies(id_especie),
+    FOREIGN KEY (id_rescate) REFERENCES Rescates(id_rescate)
+);
+
+-- ================================================================
+-- Crear tablas con múltiples dependencias/relaciones
+-- ================================================================
+
+-- Tabla Estados_Salud (depende de Animales y Empleados)
+CREATE TABLE Estados_Salud (
+    id_estado_salud NUMBER(10) PRIMARY KEY,
+    id_animal NUMBER(10),
+    fecha_evaluacion DATE,
+    tipo_problema VARCHAR2(200),
+    diagnostico VARCHAR2(500),
+    estado VARCHAR2(50), -- Enfermo, Saludable, Herido, etc.
+    id_veterinario NUMBER(10),
+    FOREIGN KEY (id_animal) REFERENCES Animales(id_animal),
+    FOREIGN KEY (id_veterinario) REFERENCES Empleados(id_empleado)
+);
+
+-- Tabla Tratamientos (depende de Animales y Empleados)
+CREATE TABLE Tratamientos (
+    id_tratamiento NUMBER(10) PRIMARY KEY,
+    id_animal NUMBER(10),
+    id_veterinario NUMBER(10),
+    id_cuidador NUMBER(10),
+    fecha_inicio DATE,
+    fecha_fin DATE, -- NULL mientras esta en cuidados
+    descripcion_tratamiento VARCHAR2(500),
+    observaciones_cuidado VARCHAR2(300),
+    estado_tratamiento VARCHAR2(50), -- En tratamiento, Completado
+    FOREIGN KEY (id_animal) REFERENCES Animales(id_animal),
+    FOREIGN KEY (id_veterinario) REFERENCES Empleados(id_empleado),
+    FOREIGN KEY (id_cuidador) REFERENCES Empleados(id_empleado)
+);
+
+-- Tabla Tratamiento_Medicamentos (depende de Tratamientos y Medicamentos)
+CREATE TABLE Tratamiento_Medicamentos (
+    id_tratamiento NUMBER(10),
+    id_medicamento NUMBER(10),
+    dosis VARCHAR2(100), -- Ej: "5mg cada 8 horas"
+    fecha_inicio_medicamento DATE, -- Puede ser diferente al inicio del tratamiento
+    fecha_fin_medicamento DATE, -- Puede terminar antes que el tratamiento
+    PRIMARY KEY (id_tratamiento, id_medicamento),
+    FOREIGN KEY (id_tratamiento) REFERENCES Tratamientos(id_tratamiento),
+    FOREIGN KEY (id_medicamento) REFERENCES Medicamentos(id_medicamento)
+);
+
+-- Tabla Liberaciones (depende de Animales y Empleados)
+CREATE TABLE Liberaciones (
+    id_liberacion NUMBER(10) PRIMARY KEY,
+    id_animal NUMBER(10),
+    fecha_liberacion DATE,
+    lugar_liberacion VARCHAR2(150),
+    observaciones VARCHAR2(300),
+    id_rescatista NUMBER(10),
+    FOREIGN KEY (id_animal) REFERENCES Animales(id_animal),
+    FOREIGN KEY (id_rescatista) REFERENCES Empleados(id_empleado)
+);
+
+-- Tabla Seguimiento_Post_Liberacion (depende de Liberaciones y Empleados)
+CREATE TABLE Seguimiento_Post_Liberacion (
+    id_seguimiento NUMBER(10) PRIMARY KEY,
+    id_liberacion NUMBER(10),
+    fecha_seguimiento DATE,
+    metodo_seguimiento VARCHAR2(50), -- GPS, cámaras trampa, etc
+    estado_animal VARCHAR2(50), -- Adaptándose bien, con dificultades, etc
+    ubicacion_avistamiento VARCHAR2(150),
+    observaciones VARCHAR2(400),
+    id_rescatista NUMBER(10),
+    FOREIGN KEY (id_liberacion) REFERENCES Liberaciones(id_liberacion),
+    FOREIGN KEY (id_rescatista) REFERENCES Empleados(id_empleado)
+);
+
+COMMIT;
