@@ -1,3 +1,13 @@
+--Script utilizado para la creacion del usuario - Imagen Docker (MAC)
+
+ALTER SESSION SET CONTAINER = ORCLPDB1;
+
+CREATE USER PROY_FINAL_BD IDENTIFIED BY "123"
+DEFAULT TABLESPACE USERS
+QUOTA UNLIMITED ON USERS;
+
+GRANT CONNECT, RESOURCE TO PROY_FINAL_BD;
+
 -- Crear tablas principales (sin dependencias/relaciones)
 
 -- Tabla Empleados

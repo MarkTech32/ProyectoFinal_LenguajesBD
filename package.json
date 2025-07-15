@@ -1,0 +1,25 @@
+{
+  "name": "proyectofinal_lenguajesbd",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarkTech32/ProyectoFinal_LenguajesBD.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MarkTech32/ProyectoFinal_LenguajesBD/issues"
+  },
+  "homepage": "https://github.com/MarkTech32/ProyectoFinal_LenguajesBD#readme",
+  "description": "",
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-handlebars": "^8.0.3",
+    "oracledb": "^6.8.0"
+  }
+}
