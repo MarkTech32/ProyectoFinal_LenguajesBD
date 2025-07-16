@@ -1,17 +1,38 @@
 const express = require('express');
 const { executeQuery } = require('./config/database');
+const RescatistaController = require('./controllers/RescatistaController');
 
 const app = express();
 const PORT = 3000;
 
-// Ruta principal - Probar conexión
+// Middleware
+app.use(express.static('public'));
+app.use(express.json());
+
+// ======= RUTAS API =======
+app.get('/api/rescates', RescatistaController.getAllRescates);
+app.get('/api/rescates/:id', RescatistaController.getRescateById);  
+app.post('/api/rescates', RescatistaController.createRescate);
+app.put('/api/rescates/:id', RescatistaController.updateRescate);
+app.delete('/api/rescates/:id', RescatistaController.deleteRescate);
+app.get('/api/empleados', RescatistaController.getAllEmpleados);   
+
+// ======= RUTAS DE PÁGINAS =======
+// Dashboard de rescatistas
+app.get('/dashboard_rescatista', (req, res) => {
+    res.sendFile(__dirname + '/public/html/dashboard_rescatista.html');
+});
+
+app.get('/html/formulario', (req, res) => {
+    res.sendFile(__dirname + '/public/html/formulario.html');
+});
+
+// Ruta principal - Verificar conexión
 app.get('/', async (req, res) => {
     try {
-        // Probar conexión con consulta simple
         const usuario = await executeQuery('SELECT USER FROM DUAL');
         const fecha = await executeQuery("SELECT TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI:SS') as FECHA FROM DUAL");
         
-        // Respuesta HTML simple
         res.send(`
             <h1>🎉 Conexión a Oracle Exitosa!</h1>
             <p><strong>Usuario conectado:</strong> ${usuario[0].USER}</p>
@@ -22,7 +43,6 @@ app.get('/', async (req, res) => {
         `);
         
     } catch (error) {
-        // Si hay error, mostrar detalles
         res.send(`
             <h1>❌ Error de Conexión</h1>
             <p><strong>Error:</strong> ${error.message}</p>

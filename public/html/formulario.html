@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario - Centro de Refugio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-center text-primary">Centro de Refugio</h1>
+                <hr>
+            </div>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="#" id="breadcrumb-dashboard">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page" id="breadcrumb-current">
+                            Formulario
+                        </li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Título del Formulario -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0" id="form-title">
+                            <i class="bi bi-plus-circle"></i> Formulario
+                        </h5>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="volver()">
+                            <i class="bi bi-arrow-left"></i> Volver
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <!-- Formulario Dinámico -->
+                        <form id="dynamic-form" novalidate>
+                            <div class="row" id="form-fields">
+                                <!-- Los campos se generarán dinámicamente aquí -->
+                            </div>
+                            
+                            <!-- Botones de Acción -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <button type="button" class="btn btn-secondary" onclick="volver()">
+                                            <i class="bi bi-x-circle"></i> Cancelar
+                                        </button>
+                                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                                            <i class="bi bi-check-circle"></i> Guardar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
+             style="background-color: rgba(0,0,0,0.5); z-index: 1000; display: none !important;" 
+             id="loading-overlay">
+            <div class="text-center text-white">
+                <div class="spinner-border text-light" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2">Procesando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/formulario.js"></script>
+    
+    <script>
+        // Inicializar formulario cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            inicializarFormulario();
+        });
+    </script>
+</body>
+</html>
