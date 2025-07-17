@@ -34,21 +34,59 @@ const tablaConfigs = {
                 required: true,
                 endpoint: '/api/empleados',
                 placeholder: 'Seleccione un rescatista'
+            },
+            {
+                name: 'animales',
+                type: 'subform',
+                label: 'Animales Rescatados',
+                required: true,
+                minItems: 1,
+                campos: [
+                    {
+                        name: 'nombre',
+                        type: 'text',
+                        label: 'Nombre del Animal',
+                        required: true,
+                        placeholder: 'Ej: Mono herido, Tucán joven'
+                    },
+                    {
+                        name: 'id_especie',
+                        type: 'select',
+                        label: 'Especie',
+                        required: true,
+                        endpoint: '/api/especies',
+                        placeholder: 'Seleccione la especie del animal'
+                    },
+                    {
+                        name: 'raza',
+                        type: 'text',
+                        label: 'Raza/Subespecie',
+                        required: false,
+                        placeholder: 'Ej: Congo, Aullador, etc.'
+                    },
+                    {
+                        name: 'edad',
+                        type: 'number',
+                        label: 'Edad (años)',
+                        required: false,
+                        placeholder: 'Edad aproximada',
+                        min: 0  
+                    },
+                    {
+                        name: 'sexo',
+                        type: 'select',
+                        label: 'Sexo',
+                        required: true,
+                        opciones: [
+                            { value: 'Macho', text: 'Macho' },
+                            { value: 'Hembra', text: 'Hembra' },
+                            { value: 'Desconocido', text: 'Desconocido' }
+                        ]
+                    }
+                ]
             }
         ]
     },
-    // Configuración para futuras tablas
-    animales: {
-        titulo: 'Animal',
-        endpoint: '/api/animales',
-        dashboardUrl: '/dashboard_animales',
-        campos: [
-            { name: 'nombre', type: 'text', label: 'Nombre del Animal', required: true },
-            { name: 'especie', type: 'text', label: 'Especie', required: true },
-            { name: 'edad', type: 'number', label: 'Edad (años)', required: false },
-            { name: 'id_rescate', type: 'select', label: 'Rescate Asociado', required: true, endpoint: '/api/rescates' }
-        ]
-    }
 };
 
 // ========== VARIABLES GLOBALES ==========
@@ -132,12 +170,16 @@ function generarHTMLCampo(campo) {
         case 'text':
         case 'date':
         case 'number':
+            //Agregar atributo min si existe
+            const minAttr = campo.min !== undefined ? `min="${campo.min}"` : '';
+            
             inputHTML = `
                 <input type="${campo.type}" 
                        class="form-control" 
                        id="${campo.name}" 
                        name="${campo.name}" 
                        placeholder="${campo.placeholder || ''}"
+                       ${minAttr}
                        ${requiredAttr}>
             `;
             break;
@@ -163,6 +205,10 @@ function generarHTMLCampo(campo) {
                 </select>
             `;
             break;
+            
+        case 'subform':
+            inputHTML = generarSubform(campo);
+            break;
     }
     
     return `
@@ -171,6 +217,20 @@ function generarHTMLCampo(campo) {
         </label>
         ${inputHTML}
         <div class="invalid-feedback" id="${campo.name}-error"></div>
+    `;
+}
+
+//Generar subform para animales
+function generarSubform(campo) {
+    return `
+        <div class="border rounded p-3 bg-light">
+            <div id="${campo.name}-container">
+                <!-- Los animales se generarán aquí dinámicamente -->
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="agregarAnimal('${campo.name}')">
+                <i class="bi bi-plus"></i> Agregar Animal
+            </button>
+        </div>
     `;
 }
 
@@ -187,6 +247,7 @@ async function configurarEventListeners() {
     document.getElementById('dynamic-form').addEventListener('submit', manejarEnvio);
 }
 
+// Esta funcion maneja empleados, rescates Y especies
 async function cargarOpcionesSelect(campo) {
     try {
         const response = await fetch(campo.endpoint);
@@ -206,9 +267,10 @@ async function cargarOpcionesSelect(campo) {
                 if (campo.endpoint.includes('empleados')) {
                     option.value = item.ID_EMPLEADO;
                     option.textContent = `${item.NOMBRE} ${item.APELLIDOS}`;
-                } else if (campo.endpoint.includes('rescates')) {
-                    option.value = item.ID_RESCATE;
-                    option.textContent = `Rescate #${item.ID_RESCATE} - ${item.LUGAR}`;
+                } else if (campo.endpoint.includes('especies')) {
+                    // Manejo para especies
+                    option.value = item.ID_ESPECIE;
+                    option.textContent = item.NOMBRE_CIENTIFICO;
                 }
                 
                 select.appendChild(option);
@@ -243,8 +305,13 @@ async function cargarDatosParaEditar() {
     }
 }
 
+// Llenar formulario incluyendo animales
 function llenarFormulario(datos) {
+    // Llenar campos normales del rescate (como antes)
     configuracionActual.campos.forEach(campo => {
+        // Si es subform, lo manejamos por separado
+        if (campo.type === 'subform') return;
+        
         const elemento = document.getElementById(campo.name);
         const valor = datos[campo.name.toUpperCase()] || datos[campo.name] || '';
         
@@ -252,6 +319,63 @@ function llenarFormulario(datos) {
             elemento.value = valor;
         }
     });
+    
+    // Llenar animales si existen
+    if (datos.animales && Array.isArray(datos.animales) && datos.animales.length > 0) {
+        llenarAnimalesExistentes(datos.animales);
+    }
+}
+
+// Llenar animales existentes en el subform
+function llenarAnimalesExistentes(animales) {
+    const container = document.getElementById('animales-container');
+    
+    // Limpiar container por si acaso
+    container.innerHTML = '';
+    
+    // Crear un "animal card" por cada animal existente
+    animales.forEach((animal, index) => {
+        const numeroAnimal = index + 1;
+        agregarAnimalExistente(numeroAnimal, animal);
+    });
+}
+
+//Cargar y preseleccionar datos para selects
+async function cargarDatosSelectsAnimalExistente(numeroAnimal, campos, datosAnimal) {
+    for (const campo of campos) {
+        if (campo.type === 'select' && campo.endpoint) {
+            try {
+                const response = await fetch(campo.endpoint);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const select = document.getElementById(`animal_${numeroAnimal}_${campo.name}`);
+                    select.innerHTML = '<option value="">Seleccione...</option>';
+                    
+                    // Llenar las opciones
+                    result.data.forEach(item => {
+                        const option = document.createElement('option');
+                        
+                        // Para especies
+                        const valorItem = item.ID_ESPECIE || item.id_especie;
+                        const textoItem = item.NOMBRE_CIENTIFICO || item.nombre_cientifico;
+                        
+                        option.value = valorItem;
+                        option.textContent = textoItem;
+                        
+                        // preseleccionar si coincide con datos actuales
+                        if (valorItem == datosAnimal[campo.name]) {
+                            option.selected = true;
+                        }
+                        
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error(`Error cargando datos para ${campo.name}:`, error);
+            }
+        }
+    }
 }
 
 // ========== MANEJO DEL ENVÍO ==========
@@ -315,34 +439,116 @@ function obtenerParametrosURL() {
     };
 }
 
+//Obtener datos del formulario incluyendo animales
 function obtenerDatosFormulario() {
     const datos = {};
     
     configuracionActual.campos.forEach(campo => {
-        const elemento = document.getElementById(campo.name);
-        if (elemento) {
-            datos[campo.name] = elemento.value.trim();
+        if (campo.type === 'subform') {
+            // ✨ NUEVO: Obtener datos de animales
+            datos[campo.name] = obtenerDatosAnimales();
+        } else {
+            // ✅ MANTENER: Campos normales como antes
+            const elemento = document.getElementById(campo.name);
+            if (elemento) {
+                datos[campo.name] = elemento.value.trim();
+            }
         }
     });
     
     return datos;
 }
 
+//Obtener datos de todos los animales
+function obtenerDatosAnimales() {
+    const animales = [];
+    const container = document.getElementById('animales-container');
+    
+    // Iterar sobre todos los cards de animales
+    const cardsAnimales = container.querySelectorAll('.card');
+    
+    cardsAnimales.forEach((card, index) => {
+        const numeroAnimal = index + 1;
+        const animal = {};
+        
+        // Obtener configuración de campos de animales
+        const configCampo = encontrarConfiguracionCampo('animales');
+        if (!configCampo) return;
+        
+        // Extraer datos de cada campo del animal
+        configCampo.campos.forEach(campo => {
+            const campoId = `animal_${numeroAnimal}_${campo.name}`;
+            const elemento = document.getElementById(campoId);
+            
+            if (elemento) {
+                const valor = elemento.value.trim();
+                // Solo agregar si tiene valor (excepto campos opcionales)
+                if (valor || !campo.required) {
+                    animal[campo.name] = valor || null;
+                }
+            }
+        });
+        
+        // Solo agregar el animal si tiene al menos nombre
+        if (animal.nombre && animal.nombre.length > 0) {
+            animales.push(animal);
+        }
+    });
+    
+    return animales;
+}
+
 function validarFormulario() {
     let esValido = true;
     
     configuracionActual.campos.forEach(campo => {
+        // ✨ NUEVO: Ignorar subforms en la validación básica
+        if (campo.type === 'subform') {
+            // Validar subforms por separado
+            if (campo.required) {
+                const container = document.getElementById(`${campo.name}-container`);
+                const animales = container.querySelectorAll('.card');
+                
+                if (animales.length === 0) {
+                    // Mostrar error para subform
+                    const errorDiv = document.getElementById(`${campo.name}-error`);
+                    if (errorDiv) {
+                        errorDiv.textContent = `Debe agregar al menos un ${campo.label.toLowerCase()}`;
+                        errorDiv.style.display = 'block';
+                        errorDiv.className = 'text-danger';
+                    }
+                    esValido = false;
+                } else {
+                    // Limpiar error si hay animales
+                    const errorDiv = document.getElementById(`${campo.name}-error`);
+                    if (errorDiv) {
+                        errorDiv.textContent = '';
+                        errorDiv.style.display = 'none';
+                    }
+                }
+            }
+            return; // Saltar al siguiente campo
+        }
+        
+        // Validación normal para campos regulares
         const elemento = document.getElementById(campo.name);
         const errorDiv = document.getElementById(`${campo.name}-error`);
         
+        // Solo proceder si el elemento existe
+        if (!elemento) return;
+        
         // Limpiar errores previos
         elemento.classList.remove('is-invalid');
-        errorDiv.textContent = '';
+        if (errorDiv) {
+            errorDiv.textContent = '';
+        }
         
         // Validar campo requerido
         if (campo.required && (!elemento.value || elemento.value.trim() === '')) {
             elemento.classList.add('is-invalid');
-            errorDiv.textContent = `${campo.label} es obligatorio`;
+            if (errorDiv) {
+                errorDiv.textContent = `${campo.label} es obligatorio`;
+            }
             esValido = false;
         }
     });
@@ -393,5 +599,214 @@ function mostrarAlerta(mensaje, tipo) {
 function volver() {
     if (confirm('¿Estás seguro de que deseas salir? Los cambios no guardados se perderán.')) {
         window.location.href = configuracionActual.dashboardUrl;
+    }
+}
+
+// agregarAnimalExistente() con todos los cambios
+function agregarAnimalExistente(numeroAnimal, datosAnimal) {
+    const container = document.getElementById('animales-container');
+    const configCampo = encontrarConfiguracionCampo('animales');
+    
+    if (!configCampo) return;
+    
+    // Crear div para este animal
+    const animalDiv = document.createElement('div');
+    animalDiv.className = 'card mb-3';
+    animalDiv.id = `animal-${numeroAnimal}`;
+    
+    // Generar campos del animal
+    let camposHTML = '';
+    configCampo.campos.forEach(campo => {
+        const campoId = `animal_${numeroAnimal}_${campo.name}`;
+        const requiredAttr = campo.required ? 'required' : '';
+        
+        // Obtener valor del animal actual
+        const valorActual = datosAnimal[campo.name] || '';
+        
+        let inputHTML = '';
+        
+        if (campo.type === 'select' && campo.opciones) {
+            // Select con opciones estáticas (como sexo)
+            const opcionesHTML = campo.opciones.map(op => 
+                `<option value="${op.value}" ${op.value === valorActual ? 'selected' : ''}>${op.text}</option>`
+            ).join('');
+            
+            inputHTML = `
+                <select class="form-select" id="${campoId}" name="${campoId}" ${requiredAttr}>
+                    <option value="">Seleccione...</option>
+                    ${opcionesHTML}
+                </select>
+            `;
+        } else if (campo.type === 'select') {
+            // Select que necesita cargar datos (como especies)
+            inputHTML = `
+                <select class="form-select" id="${campoId}" name="${campoId}" ${requiredAttr}>
+                    <option value="">Cargando...</option>
+                </select>
+            `;
+        } else {
+            // Agregar atributo min para inputs con valor actual
+            const minAttr = campo.min !== undefined ? `min="${campo.min}"` : '';
+            
+            inputHTML = `
+                <input type="${campo.type}" 
+                       class="form-control" 
+                       id="${campoId}" 
+                       name="${campoId}" 
+                       value="${valorActual}"
+                       placeholder="${campo.placeholder || ''}"
+                       ${minAttr}
+                       ${requiredAttr}>
+            `;
+        }
+        
+        camposHTML += `
+            <div class="col-md-6 mb-2">
+                <label class="form-label">${campo.label}</label>
+                ${inputHTML}
+            </div>
+        `;
+    });
+    
+    // HTML del animal completo
+    animalDiv.innerHTML = `
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Animal #${numeroAnimal}</h6>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarAnimal(${numeroAnimal})">
+                Eliminar
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                ${camposHTML}
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(animalDiv);
+    
+    // Cargar datos para selects que lo necesiten Y preseleccionar valores
+    cargarDatosSelectsAnimalExistente(numeroAnimal, configCampo.campos, datosAnimal);
+}
+
+// Agregar animal al subform (para crear nuevos)
+function agregarAnimal(nombreCampo) {
+    const container = document.getElementById(`${nombreCampo}-container`);
+    const configCampo = encontrarConfiguracionCampo(nombreCampo);
+    
+    if (!configCampo) return;
+    
+    // Contar cuántos animales ya hay
+    const numeroAnimal = container.children.length + 1;
+    
+    // Crear div para este animal
+    const animalDiv = document.createElement('div');
+    animalDiv.className = 'card mb-3';
+    animalDiv.id = `animal-${numeroAnimal}`;
+    
+    // Generar campos del animal
+    let camposHTML = '';
+    configCampo.campos.forEach(campo => {
+        const campoId = `animal_${numeroAnimal}_${campo.name}`;
+        const requiredAttr = campo.required ? 'required' : '';
+        
+        let inputHTML = '';
+        
+        if (campo.type === 'select' && campo.opciones) {
+            // Select con opciones estáticas (como sexo)
+            inputHTML = `
+                <select class="form-select" id="${campoId}" name="${campoId}" ${requiredAttr}>
+                    <option value="">Seleccione...</option>
+                    ${campo.opciones.map(op => `<option value="${op.value}">${op.text}</option>`).join('')}
+                </select>
+            `;
+        } else if (campo.type === 'select') {
+            // Select que necesita cargar datos (como especies)
+            inputHTML = `
+                <select class="form-select" id="${campoId}" name="${campoId}" ${requiredAttr}>
+                    <option value="">Cargando...</option>
+                </select>
+            `;
+        } else {
+            // ✨ NUEVO: Agregar atributo min para inputs
+            const minAttr = campo.min !== undefined ? `min="${campo.min}"` : '';
+            
+            inputHTML = `
+                <input type="${campo.type}" 
+                       class="form-control" 
+                       id="${campoId}" 
+                       name="${campoId}" 
+                       placeholder="${campo.placeholder || ''}"
+                       ${minAttr}
+                       ${requiredAttr}>
+            `;
+        }
+        
+        camposHTML += `
+            <div class="col-md-6 mb-2">
+                <label class="form-label">${campo.label}</label>
+                ${inputHTML}
+            </div>
+        `;
+    });
+    
+    // HTML del animal completo
+    animalDiv.innerHTML = `
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Animal #${numeroAnimal}</h6>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarAnimal(${numeroAnimal})">
+                Eliminar
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                ${camposHTML}
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(animalDiv);
+    
+    // Cargar datos para selects que lo necesiten
+    cargarDatosSelectsAnimal(numeroAnimal, configCampo.campos);
+}
+
+// FUNCIÓN AUXILIAR: Encontrar configuración del campo
+function encontrarConfiguracionCampo(nombreCampo) {
+    return configuracionActual.campos.find(campo => campo.name === nombreCampo);
+}
+
+// FUNCIÓN AUXILIAR: Eliminar animal
+function eliminarAnimal(numeroAnimal) {
+    const animalDiv = document.getElementById(`animal-${numeroAnimal}`);
+    if (animalDiv) {
+        animalDiv.remove();
+    }
+}
+
+// FUNCIÓN AUXILIAR: Cargar datos para selects del animal
+async function cargarDatosSelectsAnimal(numeroAnimal, campos) {
+    for (const campo of campos) {
+        if (campo.type === 'select' && campo.endpoint) {
+            try {
+                const response = await fetch(campo.endpoint);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const select = document.getElementById(`animal_${numeroAnimal}_${campo.name}`);
+                    select.innerHTML = '<option value="">Seleccione...</option>';
+                    
+                    result.data.forEach(item => {
+                        const option = document.createElement('option');
+                        // Para especies (ajustar según tu estructura)
+                        option.value = item.ID_ESPECIE || item.id_especie;
+                        option.textContent = item.NOMBRE_CIENTIFICO || item.nombre_cientifico;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error(`Error cargando datos para ${campo.name}:`, error);
+            }
+        }
     }
 }

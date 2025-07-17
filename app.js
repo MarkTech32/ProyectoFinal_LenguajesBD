@@ -16,6 +16,9 @@ app.post('/api/rescates', RescatistaController.createRescate);
 app.put('/api/rescates/:id', RescatistaController.updateRescate);
 app.delete('/api/rescates/:id', RescatistaController.deleteRescate);
 app.get('/api/empleados', RescatistaController.getAllEmpleados);   
+app.get('/api/especies', RescatistaController.getAllEspecies);
+app.get('/api/especies', RescatistaController.getAllEspecies);
+
 
 // ======= RUTAS DE PÁGINAS =======
 // Dashboard de rescatistas
@@ -40,6 +43,8 @@ app.get('/', async (req, res) => {
             <p><strong>Base de datos:</strong> ORCLPDB1</p>
             <hr>
             <p><em>¡Todo funciona correctamente!</em></p>
+            <a href="/dashboard_rescatista">Ir a Dashboard Rescatistas</a>
+
         `);
         
     } catch (error) {

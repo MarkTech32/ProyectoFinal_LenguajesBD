@@ -200,5 +200,51 @@ VALUES (
     1
 );
 
+-- Insertar especies comunes de Costa Rica con nombres que incluyen nombre común en la tabla especies
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (1, 'Alouatta palliata (Mono)', 'Atelidae', 'Bosque tropical húmedo', 'Vulnerable', 'Herbívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (2, 'Ramphastos sulfuratus (Tucán Pico Iris)', 'Ramphastidae', 'Bosque húmedo tropical', 'Preocupación menor', 'Omnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (3, 'Bradypus variegatus (Perezoso de Tres Dedos)', 'Bradypodidae', 'Bosque tropical', 'Preocupación menor', 'Herbívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (4, 'Potos flavus (Martilla)', 'Procyonidae', 'Bosque tropical', 'Preocupación menor', 'Omnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (5, 'Nasua narica (Pizote)', 'Procyonidae', 'Bosque y áreas abiertas', 'Preocupación menor', 'Omnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (6, 'Cebus imitator (Mono Cara Blanca)', 'Cebidae', 'Bosque húmedo y seco', 'Vulnerable', 'Omnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (7, 'Iguana iguana (Iguana Verde)', 'Iguanidae', 'Bosque seco y húmedo', 'Preocupación menor', 'Herbívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (8, 'Ara macao (Guacamayo Rojo)', 'Psittacidae', 'Bosque húmedo tropical', 'En peligro', 'Herbívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (9, 'Crocodylus acutus (Cocodrilo)', 'Crocodylidae', 'Ríos y manglares', 'Vulnerable', 'Carnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (10, 'Tayassu pecari (Chancho de Monte)', 'Tayassuidae', 'Bosque húmedo tropical', 'Vulnerable', 'Omnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (11, 'Didelphis marsupialis (Zorro Pelón)', 'Didelphidae', 'Bosque y áreas urbanas', 'Preocupación menor', 'Omnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (12, 'Chelonia mydas (Tortuga Verde)', 'Cheloniidae', 'Océano y costas', 'En peligro', 'Herbívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (13, 'Saimiri oerstedii (Mono Aullador)', 'Cebidae', 'Bosque húmedo costero', 'En peligro crítico', 'Omnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (14, 'Pteroglossus torquatus (Tucancillo Collarejo)', 'Ramphastidae', 'Bosque húmedo', 'Preocupación menor', 'Omnívoro');
+
+INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
+VALUES (15, 'Leopardus pardalis (Ocelote)', 'Felidae', 'Bosque húmedo y seco', 'Preocupación menor', 'Carnívoro');
+
 
 COMMIT;

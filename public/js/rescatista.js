@@ -16,7 +16,6 @@ async function cargarRescates() {
     }
 }
 
-// Mostrar rescates en la tabla HTML
 function mostrarRescatesEnTabla(rescates) {
     const tbody = document.querySelector('table tbody');
     
@@ -27,7 +26,7 @@ function mostrarRescatesEnTabla(rescates) {
     if (rescates.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center">No hay rescates registrados</td>
+                <td colspan="8" class="text-center">No hay rescates registrados</td>
             </tr>
         `;
         return;
@@ -35,12 +34,32 @@ function mostrarRescatesEnTabla(rescates) {
     
     // Llenar tabla con rescates
     rescates.forEach(rescate => {
+        //Procesar información de animales
+        let animalesNombres = 'Sin animales';
+        let animalesEspecies = 'N/A';
+        
+        if (rescate.animales && rescate.animales.length > 0) {
+            animalesNombres = rescate.animales
+                .map(animal => animal.nombre)
+                .join(', ');
+            
+            animalesEspecies = rescate.animales
+                .map(animal => animal.especie || 'Especie no registrada')
+                .join(', ');
+        }
+        
         const fila = document.createElement('tr');
         fila.innerHTML = `
             <td>${rescate.ID_RESCATE}</td>
             <td>${rescate.FECHA_RESCATE}</td>
             <td>${rescate.LUGAR}</td>
             <td>${rescate.DETALLES}</td>
+            <td>
+                <small>${animalesNombres}</small>
+            </td>
+            <td>
+                <small class="text-muted">${animalesEspecies}</small>
+            </td>
             <td><span class="badge bg-info">Registrado</span></td>
             <td>
                 <button type="button" class="btn btn-sm btn-primary me-1" onclick="editarRescate(${rescate.ID_RESCATE})">
