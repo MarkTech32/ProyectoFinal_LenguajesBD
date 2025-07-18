@@ -1,35 +1,17 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const { executeQuery } = require('./config/database');
 const RescatistaController = require('./controllers/RescatistaController');
 
 const app = express();
 const PORT = 3000;
 
-// Middleware
+// ======= MIDDLEWARE (SIEMPRE AL INICIO) =======
 app.use(express.static('public'));
 app.use(express.json());
-
-// ======= RUTAS API =======
-app.get('/api/rescates', RescatistaController.getAllRescates);
-app.get('/api/rescates/:id', RescatistaController.getRescateById);  
-app.post('/api/rescates', RescatistaController.createRescate);
-app.put('/api/rescates/:id', RescatistaController.updateRescate);
-app.delete('/api/rescates/:id', RescatistaController.deleteRescate);
-app.get('/api/empleados', RescatistaController.getAllEmpleados);   
-app.get('/api/especies', RescatistaController.getAllEspecies);
-app.get('/api/especies', RescatistaController.getAllEspecies);
-
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // ======= RUTAS DE PÁGINAS =======
-// Dashboard de rescatistas
-app.get('/dashboard_rescatista', (req, res) => {
-    res.sendFile(__dirname + '/public/html/dashboard_rescatista.html');
-});
-
-app.get('/html/formulario', (req, res) => {
-    res.sendFile(__dirname + '/public/html/formulario.html');
-});
-
 // Ruta principal - Verificar conexión
 app.get('/', async (req, res) => {
     try {
@@ -43,8 +25,8 @@ app.get('/', async (req, res) => {
             <p><strong>Base de datos:</strong> ORCLPDB1</p>
             <hr>
             <p><em>¡Todo funciona correctamente!</em></p>
-            <a href="/dashboard_rescatista">Ir a Dashboard Rescatistas</a>
-
+            <a href="/login">Ir a login</a> | 
+            <a href="/index">Ir a inicio</a>
         `);
         
     } catch (error) {
@@ -57,9 +39,66 @@ app.get('/', async (req, res) => {
     }
 });
 
-// Iniciar servidor
+// Dashboard de rescatistas
+app.get('/dashboard_rescatista', (req, res) => {
+    res.sendFile(__dirname + '/public/html/dashboard_rescatista.html');
+});
+
+// Formulario
+app.get('/html/formulario', (req, res) => {
+    res.sendFile(__dirname + '/public/html/formulario.html');
+});
+
+// Login
+app.get('/login', (req, res) => {
+    res.sendFile(__dirname + '/public/html/login.html');
+});
+
+// Index (página principal del centro de refugio)
+app.get('/index', (req, res) => {
+    res.sendFile(__dirname + '/public/html/index.html');
+});
+
+// ======= RUTAS DE AUTENTICACIÓN =======
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const result = await executeQuery(
+            `SELECT * FROM Empleados WHERE username = :1 AND password_hash = :2`,
+            [username, password]
+        );
+        if (result.length > 0) {
+            // Login exitoso - redirigir al centro de refugio
+            res.redirect('/index');
+        } else {
+            // Login fallido
+            res.send(`
+                <h2>❌ Usuario o contraseña incorrectos</h2>
+                <a href="/login">Volver a intentar</a>
+            `);
+        }
+    } catch (error) {
+        console.error('Error en login:', error);
+        res.status(500).send('Error interno del servidor');
+    }
+});
+
+// ======= RUTAS API =======
+app.get('/api/rescates', RescatistaController.getAllRescates);
+app.get('/api/rescates/:id', RescatistaController.getRescateById);  
+app.post('/api/rescates', RescatistaController.createRescate);
+app.put('/api/rescates/:id', RescatistaController.updateRescate);
+app.delete('/api/rescates/:id', RescatistaController.deleteRescate);
+app.get('/api/empleados', RescatistaController.getAllEmpleados);   
+
+// ======= INICIAR SERVIDOR =======
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en: http://localhost:${PORT}`);
+    console.log('Rutas disponibles:');
+    console.log('  • http://localhost:3000/ (conexión DB)');
+    console.log('  • http://localhost:3000/login');
+    console.log('  • http://localhost:3000/index (centro de refugio)');
+    console.log('  • http://localhost:3000/dashboard_rescatista');
     console.log('Presiona Ctrl+C para detener el servidor');
 });
 

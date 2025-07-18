@@ -5,19 +5,116 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Centro de Refugio - Inicio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <div class="container mt-5 text-center">
-        <h1 class="text-primary mb-4">Centro de Refugio</h1>
-        <p class="lead">Bienvenido al sistema de gestión de rescates</p>
+    <div class="container mt-5">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="text-primary mb-3">Centro de Refugio</h1>
+            <p class="lead text-muted">Sistema de gestión de rescates de fauna silvestre</p>
+        </div>
 
-        <a href="/html/formulario.html?tipo=rescates&modo=crear" class="btn btn-success btn-lg">
-            <i class="bi bi-plus-circle"></i> Agregar Rescate
-        </a>
+        <!-- Menu Principal -->
+        <div class="row g-4">
+            <!-- Rescates -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-search text-success mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="card-title">Rescates</h5>
+                        <p class="card-text text-muted">Registrar nuevos rescates de animales</p>
+                        <a href="/html/formulario.html?tipo=rescates&modo=crear" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Agregar Rescate
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Animales en Tratamiento -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-heart-pulse-fill text-danger mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="card-title">Animales en Tratamiento</h5>
+                        <p class="card-text text-muted">Gestionar tratamientos veterinarios</p>
+                        <a href="/html/formulario.html?tipo=tratamientos&modo=crear" class="btn btn-danger">
+                            <i class="bi bi-medical-bag"></i> Ver Tratamientos
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Animales bajo Cuidado -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-bandaid-fill text-warning mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="card-title">Animales bajo Cuidado</h5>
+                        <p class="card-text text-muted">Supervisar cuidados y rehabilitación</p>
+                        <a href="/html/formulario.html?tipo=cuidados&modo=crear" class="btn btn-warning">
+                            <i class="bi bi-eye"></i> Ver Cuidados
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Liberaciones -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-arrow-up-circle-fill text-info mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="card-title">Liberaciones</h5>
+                        <p class="card-text text-muted">Registrar liberaciones de animales</p>
+                        <a href="/html/formulario.html?tipo=liberaciones&modo=crear" class="btn btn-info">
+                            <i class="bi bi-box-arrow-up"></i> Ver Liberaciones
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas rápidas -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Estadísticas Rápidas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="stat-item">
+                                    <h3 class="text-success mb-1">24</h3>
+                                    <small class="text-muted">Rescates este mes</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-item">
+                                    <h3 class="text-danger mb-1">12</h3>
+                                    <small class="text-muted">En tratamiento</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-item">
+                                    <h3 class="text-warning mb-1">18</h3>
+                                    <small class="text-muted">Bajo cuidado</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-item">
+                                    <h3 class="text-info mb-1">15</h3>
+                                    <small class="text-muted">Liberados</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

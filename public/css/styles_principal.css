@@ -1,0 +1,175 @@
+/* Estilos generales */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header */
+.text-primary {
+    color: #2c5530 !important;
+}
+
+.lead {
+    font-size: 1.1rem;
+    font-weight: 300;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.card-body {
+    padding: 2rem 1.5rem;
+}
+
+.card-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.card-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Botones */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+    color: #000;
+}
+
+.btn-info {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+    border-color: #117a8b;
+}
+
+/* Iconos */
+.bi {
+    display: inline-block;
+}
+
+/* Estadísticas */
+.stat-item {
+    padding: 1rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.8);
+    margin: 0.5rem 0;
+}
+
+.stat-item h3 {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stat-item small {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem 1rem;
+    }
+    
+    .stat-item {
+        margin: 0.25rem 0;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* Colores personalizados para el centro de refugio */
+:root {
+    --primary-green: #2c5530;
+    --secondary-green: #4a7c59;
+    --accent-green: #6ab04c;
+    --light-green: #e8f5e8;
+}
+
+/* Sombras personalizadas */
+.shadow-sm {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+}
+
+/* Hover effects para iconos */
+.bi:hover {
+    transform: scale(1.1);
+    transition: transform 0.3s ease;
+}
