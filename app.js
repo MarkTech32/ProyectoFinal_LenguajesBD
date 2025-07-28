@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { executeQuery } = require('./config/database');
 const RescatistaController = require('./controllers/RescatistaController');
+const VeterinarioController = require('./controllers/VeterinarioController');
 
 const app = express();
 const PORT = 3000;
@@ -44,6 +45,11 @@ app.get('/dashboard_rescatista', (req, res) => {
     res.sendFile(__dirname + '/public/html/dashboard_rescatista.html');
 });
 
+// Dashboard de veterinarios
+app.get('/dashboard_veterinario', (req, res) => {
+    res.sendFile(__dirname + '/public/html/dashboard_veterinario.html');
+});
+
 // Formulario
 app.get('/html/formulario', (req, res) => {
     res.sendFile(__dirname + '/public/html/formulario.html');
@@ -83,13 +89,28 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// ======= RUTAS API =======
+// ======= RUTAS API - RESCATISTAS =======
 app.get('/api/rescates', RescatistaController.getAllRescates);
 app.get('/api/rescates/:id', RescatistaController.getRescateById);  
 app.post('/api/rescates', RescatistaController.createRescate);
 app.put('/api/rescates/:id', RescatistaController.updateRescate);
 app.delete('/api/rescates/:id', RescatistaController.deleteRescate);
 app.get('/api/empleados', RescatistaController.getAllEmpleados);   
+app.get('/api/especies', RescatistaController.getAllEspecies);
+
+// ======= RUTAS API - VETERINARIOS =======
+// Rutas para el dashboard de veterinarios (3 categorías)
+app.get('/api/veterinario/pendientes', VeterinarioController.getAnimalesPendientes);
+app.get('/api/veterinario/en-tratamiento', VeterinarioController.getAnimalesEnTratamiento);
+app.get('/api/veterinario/listos', VeterinarioController.getAnimalesListos);
+
+// Rutas para manejo de tratamientos
+app.post('/api/veterinario/tratamientos', VeterinarioController.createTratamiento);
+app.get('/api/veterinario/tratamientos/:id', VeterinarioController.getTratamientoById);
+app.put('/api/veterinario/tratamientos/:id', VeterinarioController.updateTratamiento);
+
+// Ruta para completar tratamiento
+app.put('/api/veterinario/completar/:id', VeterinarioController.completarTratamiento);
 
 // ======= INICIAR SERVIDOR =======
 app.listen(PORT, () => {
@@ -99,6 +120,7 @@ app.listen(PORT, () => {
     console.log('  • http://localhost:3000/login');
     console.log('  • http://localhost:3000/index (centro de refugio)');
     console.log('  • http://localhost:3000/dashboard_rescatista');
+    console.log('  • http://localhost:3000/dashboard_veterinario');
     console.log('Presiona Ctrl+C para detener el servidor');
 });
 

@@ -122,6 +122,34 @@ CREATE TABLE Tratamientos (
     FOREIGN KEY (id_cuidador) REFERENCES Empleados(id_empleado)
 );
 
+-- Estandarizaion del estado_tratamiento para que tenga 3 tipos de estados: PENDIENTE, EN_TRATAMIENTO y COMPLETADO
+UPDATE Tratamientos 
+SET estado_tratamiento = 'PENDIENTE' 
+WHERE UPPER(estado_tratamiento) LIKE '%PENDIENTE%' 
+   OR UPPER(estado_tratamiento) LIKE '%ESPERA%';
+
+UPDATE Tratamientos 
+SET estado_tratamiento = 'EN_TRATAMIENTO' 
+WHERE UPPER(estado_tratamiento) LIKE '%TRATAMIENTO%' 
+   OR UPPER(estado_tratamiento) LIKE '%ACTIVO%';
+
+UPDATE Tratamientos 
+SET estado_tratamiento = 'COMPLETADO' 
+WHERE UPPER(estado_tratamiento) LIKE '%COMPLETADO%' 
+   OR UPPER(estado_tratamiento) LIKE '%TERMINADO%'
+   OR UPPER(estado_tratamiento) LIKE '%FINALIZADO%';
+
+-- Agregamos regla para validar solo valores permitidos
+ALTER TABLE Tratamientos 
+ADD CONSTRAINT chk_estado_tratamiento 
+CHECK (estado_tratamiento IN ('PENDIENTE', 'EN_TRATAMIENTO', 'COMPLETADO'));
+
+-- Establecemos el valor PENDIENTE por defecto
+ALTER TABLE Tratamientos 
+MODIFY estado_tratamiento DEFAULT 'PENDIENTE';
+
+
+
 -- Tabla Tratamiento_Medicamentos (depende de Tratamientos y Medicamentos)
 CREATE TABLE Tratamiento_Medicamentos (
     id_tratamiento NUMBER(10),
@@ -160,6 +188,12 @@ CREATE TABLE Seguimiento_Post_Liberacion (
     FOREIGN KEY (id_rescatista) REFERENCES Empleados(id_empleado)
 );
 
+
+-- Creacion de los roles (Rescatista, Veterinario y Cuidador)
+INSERT INTO Roles (id_rol, nombre_rol) VALUES (1, 'Rescatista');
+INSERT INTO Roles (id_rol, nombre_rol) VALUES (2, 'Veterinario');
+INSERT INTO Roles (id_rol, nombre_rol) VALUES (3, 'Cuidador');
+
 --Insertar un usuario de ejemplo a la tabla empleados
 INSERT INTO Empleados (id_empleado, nombre, apellidos, telefono, correo, username, password_hash)
 VALUES (
@@ -170,6 +204,49 @@ VALUES (
     'laura.jimenez@example.com',
     'laujime',
     '123' 
+);
+
+-- Insercion de nuevo empleado (Veterinario)
+INSERT INTO Empleados (id_empleado, nombre, apellidos, telefono, correo, username, password_hash)
+VALUES (
+    2,
+    'Dr. Carlos',
+    'Morales Vega',
+    '8888-5678',
+    'carlos.morales@centrorescate.com',
+    'carmore',
+    '456'
+);
+
+-- Insercion de nuevo empleado (Cuidador)
+INSERT INTO Empleados (id_empleado, nombre, apellidos, telefono, correo, username, password_hash)
+VALUES (
+    3,
+    'Ana María',
+    'González Castro',
+    '8888-9012',
+    'ana.gonzalez@centrorescate.com',
+    'anagon',
+    '789'
+);
+
+-- Asignacion de roles a todos los empleados
+-- Ya Laura Jiménez - Rescatista (Laura ya existia entonces solo tenemos que modificarla y asignarle el rol 1)
+INSERT INTO Empleados_Roles (id_empleado, id_rol, nivel_acceso, zona_asignada, especialidad_medica, area_asignada, cargo)
+VALUES (
+    1, 1, 3, 'Zona Norte y Central', NULL, 'Campo - Rescate', 'Especialista en Rescate'
+);
+
+-- Dr. Carlos Morales - Veterinario
+INSERT INTO Empleados_Roles (id_empleado, id_rol, nivel_acceso, zona_asignada, especialidad_medica, area_asignada, cargo)
+VALUES (
+    2, 2, 3, 'Centro de Rehabilitación', 'Medicina de Fauna Silvestre', 'Clínica Veterinaria', 'Veterinario Principal'
+);
+
+-- Ana María González - Cuidadora
+INSERT INTO Empleados_Roles (id_empleado, id_rol, nivel_acceso, zona_asignada, especialidad_medica, area_asignada, cargo)
+VALUES (
+    3, 3, 2, 'Centro de Rehabilitación', NULL, 'Cuidados Intensivos', 'Cuidadora Senior'
 );
 
 --Insertar algunos elementos a la tabla rescate a nombre de Laura Jimenez
@@ -199,6 +276,26 @@ VALUES (
     'Un tucán con fractura de ala fue trasladado para rehabilitación veterinaria.',
     1
 );
+
+-- Insercion de algunos animales para la tabla "animales"
+INSERT INTO Animales (id_animal, nombre, id_especie, raza, edad, sexo, id_rescate)
+VALUES (1, 'Mono Herido', 1, 'Congo', 3, 'Macho', 101);
+
+INSERT INTO Animales (id_animal, nombre, id_especie, raza, edad, sexo, id_rescate)
+VALUES (2, 'Caimán Joven', 9, NULL, 1, 'Hembra', 102);
+
+INSERT INTO Animales (id_animal, nombre, id_especie, raza, edad, sexo, id_rescate)
+VALUES (3, 'Tucán Lesionado', 2, NULL, 2, 'Macho', 103);
+
+--Insercion de algunos animales a la tabla tratamiento, cada uno con un estado diferente
+INSERT INTO Tratamientos (id_tratamiento, id_animal, id_veterinario, id_cuidador, fecha_inicio, fecha_fin, descripcion_tratamiento, observaciones_cuidado, estado_tratamiento)
+VALUES (1, 1, 2, NULL, NULL, NULL, NULL, 'Animal recién rescatado, pendiente de evaluación veterinaria', 'PENDIENTE');
+
+INSERT INTO Tratamientos (id_tratamiento, id_animal, id_veterinario, id_cuidador, fecha_inicio, fecha_fin, descripcion_tratamiento, observaciones_cuidado, estado_tratamiento)
+VALUES (2, 2, 2, 3, SYSDATE-5, NULL, 'Tratamiento de herida en pata trasera, antibióticos y vendajes', 'Respondiendo bien al tratamiento', 'EN_TRATAMIENTO');
+
+INSERT INTO Tratamientos (id_tratamiento, id_animal, id_veterinario, id_cuidador, fecha_inicio, fecha_fin, descripcion_tratamiento, observaciones_cuidado, estado_tratamiento)
+VALUES (3, 3, 2, 3, SYSDATE-10, SYSDATE-2, 'Fractura de ala tratada con éxito, rehabilitación completa', 'Listo para cuidados básicos y preparación para liberación', 'COMPLETADO');
 
 -- Insertar especies comunes de Costa Rica con nombres que incluyen nombre común en la tabla especies
 INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 

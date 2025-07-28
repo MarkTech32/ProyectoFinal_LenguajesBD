@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Veterinarios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-center text-primary">Centro de Refugio - Veterinarios</h1>
+                <hr>
+            </div>
+        </div>
+
+        <!-- Botón Volver -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <a href="index.html" class="btn btn-secondary" role="button">
+                    <i class="bi bi-arrow-left-circle"></i> Volver al Inicio
+                </a>
+            </div>
+        </div>
+
+        <!-- Tabs de Navegación -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <ul class="nav nav-tabs" id="veterinarioTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#pendientes" type="button" role="tab">
+                            <i class="bi bi-clock-history"></i> Pendientes de Tratamiento
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tratamiento-tab" data-bs-toggle="tab" data-bs-target="#tratamiento" type="button" role="tab">
+                            <i class="bi bi-heart-pulse"></i> En Tratamiento
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="listos-tab" data-bs-toggle="tab" data-bs-target="#listos" type="button" role="tab">
+                            <i class="bi bi-check-circle"></i> Listos para Cuidadores
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Contenido de las Tabs -->
+        <div class="tab-content">
+            
+            <!-- Tab 1: Pendientes de Tratamiento -->
+            <div class="tab-pane fade show active" id="pendientes">
+                <!-- Botón Agregar -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-warning" onclick="evaluarAnimal()">
+                            <i class="bi bi-plus-circle"></i> Evaluar Animal
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tabla de Animales Pendientes -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Animales Pendientes de Tratamiento</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nombre</th>
+                                            <th>Especie</th>
+                                            <th>Edad/Sexo</th>
+                                            <th>Fecha Rescate</th>
+                                            <th>Lugar</th>
+                                            <th>Rescatista</th>
+                                            <th>Días Esperando</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-pendientes">
+                                        <tr>
+                                            <td colspan="9" class="text-center">Cargando animales pendientes...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: En Tratamiento -->
+            <div class="tab-pane fade" id="tratamiento">
+                <!-- Botón Agregar -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-info" onclick="actualizarTratamiento()">
+                            <i class="bi bi-pencil-square"></i> Actualizar Tratamiento
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tabla de Tratamientos Activos -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Animales en Tratamiento</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>ID Tratamiento</th>
+                                            <th>Animal</th>
+                                            <th>Especie</th>
+                                            <th>Diagnóstico</th>
+                                            <th>Fecha Inicio</th>
+                                            <th>Días en Tratamiento</th>
+                                            <th>Estado Salud</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-tratamiento">
+                                        <tr>
+                                            <td colspan="8" class="text-center">Cargando tratamientos activos...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Listos para Cuidadores -->
+            <div class="tab-pane fade" id="listos">
+                <!-- Botón Agregar -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-success" onclick="asignarCuidador()">
+                            <i class="bi bi-person-plus"></i> Asignar Cuidador
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tabla de Animales Listos -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Animales Listos para Cuidadores</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Animal</th>
+                                            <th>Especie</th>
+                                            <th>Diagnóstico Final</th>
+                                            <th>Fecha Fin</th>
+                                            <th>Veterinario</th>
+                                            <th>Observaciones</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-listos">
+                                        <tr>
+                                            <td colspan="9" class="text-center">Cargando animales listos...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/veterinario.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
