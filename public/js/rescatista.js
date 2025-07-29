@@ -106,12 +106,12 @@ function confirmarEliminar(id) {
 
 // Función para agregar rescate - Redirige al formulario dinámico
 function agregarRescate() {
-    window.location.href = '/html/formulario.html?tipo=rescates&modo=crear';
+    window.location.href = '/html/formulario?tipo=rescates&modo=crear';
 }
 
 // Función para editar rescate - Redirige al formulario dinámico con ID
 function editarRescate(id) {
-    window.location.href = `/html/formulario.html?tipo=rescates&modo=editar&id=${id}`;
+    window.location.href = `/html/formulario?tipo=rescates&modo=editar&id=${id}`;
 }
 
 // Mostrar mensajes al usuario

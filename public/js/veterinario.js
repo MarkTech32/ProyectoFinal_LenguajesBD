@@ -109,11 +109,11 @@ function mostrarAnimalesListos(animales) {
 
 // ========== ACCIONES PRINCIPALES ==========
 function evaluarAnimal(idAnimal) {
-    window.location.href = `/html/formulario.html?tipo=tratamientos&modo=crear&id_animal=${idAnimal}`;
+    window.location.href = `/html/formulario?tipo=tratamientos&modo=crear&id_animal=${idAnimal}`;
 }
 
 function editarTratamiento(idTratamiento) {
-    window.location.href = `/html/formulario.html?tipo=tratamientos&modo=editar&id=${idTratamiento}`;
+    window.location.href = `/html/formulario?tipo=tratamientos&modo=editar&id=${idTratamiento}`;
 }
 
 async function completarTratamiento(idTratamiento) {

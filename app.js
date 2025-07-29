@@ -42,27 +42,27 @@ app.get('/', async (req, res) => {
 
 // Dashboard de rescatistas
 app.get('/dashboard_rescatista', (req, res) => {
-    res.sendFile(__dirname + '/public/html/dashboard_rescatista.html');
+    res.sendFile(__dirname + '/views/dashboard_rescatista.html');
 });
 
 // Dashboard de veterinarios
 app.get('/dashboard_veterinario', (req, res) => {
-    res.sendFile(__dirname + '/public/html/dashboard_veterinario.html');
+    res.sendFile(__dirname + '/views/dashboard_veterinario.html');
 });
 
 // Formulario
 app.get('/html/formulario', (req, res) => {
-    res.sendFile(__dirname + '/public/html/formulario.html');
+    res.sendFile(__dirname + '/views/formulario.html');
 });
 
 // Login
 app.get('/login', (req, res) => {
-    res.sendFile(__dirname + '/public/html/login.html');
+    res.sendFile(__dirname + '/views/login.html');
 });
 
 // Index (página principal del centro de refugio)
 app.get('/index', (req, res) => {
-    res.sendFile(__dirname + '/public/html/index.html');
+    res.sendFile(__dirname + '/views/index.html');
 });
 
 // ======= RUTAS DE AUTENTICACIÓN =======

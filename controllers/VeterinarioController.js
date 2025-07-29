@@ -1,4 +1,7 @@
-const { executeQuery, executeNonQuery } = require('../config/database');
+// Importar modelos
+const Tratamiento = require('../models/Tratamiento');
+const Animal = require('../models/Animal');
+const Empleado = require('../models/Empleado');
 
 // ========== HELPERS GENÉRICOS ==========
 const handleError = (res, error, message = 'Error interno del servidor') => {
@@ -27,97 +30,13 @@ const sendError = (res, message, status = 400) => {
     });
 };
 
-// ========== QUERIES OPTIMIZADAS ==========
-const queries = {
-    animalesPendientes: `
-        SELECT 
-            a.id_animal,
-            a.nombre as nombre_animal,
-            esp.nombre_cientifico,
-            a.edad,
-            a.sexo,
-            TO_CHAR(r.fecha_rescate, 'YYYY-MM-DD') as fecha_rescate,
-            r.lugar as lugar_rescate,
-            e.nombre || ' ' || e.apellidos as nombre_rescatista,
-            r.detalles as detalles_rescate,
-            t.observaciones_cuidado as observaciones
-        FROM Animales a
-        INNER JOIN Rescates r ON a.id_rescate = r.id_rescate
-        INNER JOIN Especies esp ON a.id_especie = esp.id_especie
-        INNER JOIN Empleados e ON r.id_rescatista = e.id_empleado
-        INNER JOIN Tratamientos t ON a.id_animal = t.id_animal
-        WHERE t.estado_tratamiento = 'PENDIENTE'
-        ORDER BY r.fecha_rescate ASC
-    `,
-    
-    animalesEnTratamiento: `
-        SELECT 
-            t.id_tratamiento,
-            a.id_animal,
-            a.nombre as nombre_animal,
-            esp.nombre_cientifico,
-            t.descripcion_tratamiento as diagnostico,
-            TO_CHAR(t.fecha_inicio, 'YYYY-MM-DD') as fecha_inicio,
-            es.estado as estado_salud,
-            es.diagnostico,
-            ev.nombre || ' ' || ev.apellidos as nombre_veterinario
-        FROM Tratamientos t
-        INNER JOIN Animales a ON t.id_animal = a.id_animal
-        INNER JOIN Especies esp ON a.id_especie = esp.id_especie
-        LEFT JOIN Estados_Salud es ON a.id_animal = es.id_animal
-        LEFT JOIN Empleados ev ON t.id_veterinario = ev.id_empleado
-        WHERE t.estado_tratamiento = 'EN_TRATAMIENTO'
-        ORDER BY t.fecha_inicio ASC
-    `,
-    
-    animalesListos: `
-        SELECT 
-            a.id_animal,
-            a.nombre as nombre_animal,
-            esp.nombre_cientifico,
-            t.descripcion_tratamiento as diagnostico_final,
-            TO_CHAR(t.fecha_fin, 'YYYY-MM-DD') as fecha_fin_tratamiento,
-            ev.nombre || ' ' || ev.apellidos as nombre_veterinario,
-            t.observaciones_cuidado as observaciones,
-            t.estado_tratamiento
-        FROM Tratamientos t
-        INNER JOIN Animales a ON t.id_animal = a.id_animal
-        INNER JOIN Especies esp ON a.id_especie = esp.id_especie
-        LEFT JOIN Empleados ev ON t.id_veterinario = ev.id_empleado
-        WHERE t.estado_tratamiento = 'COMPLETADO'
-        AND t.fecha_fin IS NOT NULL
-        ORDER BY t.fecha_fin DESC
-    `,
-
-    tratamientoPorId: `
-        SELECT 
-            t.id_tratamiento,
-            t.id_animal,
-            t.id_veterinario,
-            t.id_cuidador,
-            TO_CHAR(t.fecha_inicio, 'YYYY-MM-DD') as fecha_inicio,
-            TO_CHAR(t.fecha_fin, 'YYYY-MM-DD') as fecha_fin,
-            t.descripcion_tratamiento,
-            t.observaciones_cuidado,
-            t.estado_tratamiento,
-            a.nombre as nombre_animal,
-            esp.nombre_cientifico,
-            ev.nombre || ' ' || ev.apellidos as nombre_veterinario
-        FROM Tratamientos t
-        INNER JOIN Animales a ON t.id_animal = a.id_animal
-        INNER JOIN Especies esp ON a.id_especie = esp.id_especie
-        LEFT JOIN Empleados ev ON t.id_veterinario = ev.id_empleado
-        WHERE t.id_tratamiento = :1
-    `
-};
-
 // ========== CONTROLLER ==========
 const VeterinarioController = {
     
     // Obtener animales pendientes de tratamiento
     getAnimalesPendientes: async (req, res) => {
         try {
-            const animales = await executeQuery(queries.animalesPendientes);
+            const animales = await Tratamiento.getAnimalesPendientes();
             sendSuccess(res, animales, 'Animales pendientes obtenidos exitosamente');
         } catch (error) {
             handleError(res, error, 'Error al obtener animales pendientes');
@@ -127,7 +46,7 @@ const VeterinarioController = {
     // Obtener animales en tratamiento activo
     getAnimalesEnTratamiento: async (req, res) => {
         try {
-            const tratamientos = await executeQuery(queries.animalesEnTratamiento);
+            const tratamientos = await Tratamiento.getAnimalesEnTratamiento();
             sendSuccess(res, tratamientos, 'Tratamientos activos obtenidos exitosamente');
         } catch (error) {
             handleError(res, error, 'Error al obtener tratamientos activos');
@@ -137,7 +56,7 @@ const VeterinarioController = {
     // Obtener animales listos para cuidadores
     getAnimalesListos: async (req, res) => {
         try {
-            const animales = await executeQuery(queries.animalesListos);
+            const animales = await Tratamiento.getAnimalesListos();
             sendSuccess(res, animales, 'Animales listos para cuidadores obtenidos exitosamente');
         } catch (error) {
             handleError(res, error, 'Error al obtener animales listos');
@@ -153,31 +72,13 @@ const VeterinarioController = {
                 return sendError(res, 'ID de tratamiento inválido');
             }
 
-            // Verificar que el tratamiento existe y está activo
-            const tratamiento = await executeQuery(
-                'SELECT estado_tratamiento FROM Tratamientos WHERE id_tratamiento = :1',
-                [id]
-            );
+            const resultado = await Tratamiento.completar(id);
 
-            if (tratamiento.length === 0) {
-                return sendError(res, 'El tratamiento especificado no existe', 404);
+            if (!resultado.success) {
+                return sendError(res, resultado.message, 404);
             }
 
-            if (tratamiento[0].ESTADO_TRATAMIENTO !== 'EN_TRATAMIENTO') {
-                return sendError(res, 'El tratamiento no está en estado activo');
-            }
-
-            // Completar tratamiento
-            await executeNonQuery(
-                'UPDATE Tratamientos SET estado_tratamiento = \'COMPLETADO\', fecha_fin = SYSDATE WHERE id_tratamiento = :1',
-                [id]
-            );
-
-            sendSuccess(res, {
-                id_tratamiento: parseInt(id),
-                nuevo_estado: 'COMPLETADO',
-                fecha_completado: new Date().toISOString().split('T')[0]
-            }, 'Tratamiento completado exitosamente');
+            sendSuccess(res, resultado.data, 'Tratamiento completado exitosamente');
 
         } catch (error) {
             handleError(res, error, 'Error al completar tratamiento');
@@ -195,43 +96,33 @@ const VeterinarioController = {
             }
             
             // Verificar existencias en paralelo
-            const [animalExists, veterinarioExists, tratamientoActivo] = await Promise.all([
-                executeQuery('SELECT id_animal FROM Animales WHERE id_animal = :1', [id_animal]),
-                executeQuery('SELECT id_empleado FROM Empleados WHERE id_empleado = :1', [id_veterinario]),
-                executeQuery('SELECT id_tratamiento FROM Tratamientos WHERE id_animal = :1 AND estado_tratamiento = \'EN_TRATAMIENTO\'', [id_animal])
+            const [animalExists, veterinarioExists, tieneTraTamientoActivo] = await Promise.all([
+                Animal.exists(id_animal),
+                Empleado.exists(id_veterinario),
+                Tratamiento.hasActiveTreatment(id_animal)
             ]);
             
-            if (animalExists.length === 0) {
+            if (!animalExists) {
                 return sendError(res, 'El animal especificado no existe', 404);
             }
             
-            if (veterinarioExists.length === 0) {
+            if (!veterinarioExists) {
                 return sendError(res, 'El veterinario especificado no existe', 404);
             }
             
-            if (tratamientoActivo.length > 0) {
+            if (tieneTraTamientoActivo) {
                 return sendError(res, 'El animal ya tiene un tratamiento activo');
             }
             
-            // Obtener próximo ID y crear tratamiento
-            const maxIdResult = await executeQuery('SELECT NVL(MAX(id_tratamiento), 0) + 1 as next_id FROM Tratamientos');
-            const nextTratamientoId = maxIdResult[0].NEXT_ID;
-            
-            await executeNonQuery(`
-                INSERT INTO Tratamientos (id_tratamiento, id_animal, id_veterinario, id_cuidador, 
-                                        fecha_inicio, fecha_fin, descripcion_tratamiento, 
-                                        observaciones_cuidado, estado_tratamiento)
-                VALUES (:1, :2, :3, NULL, SYSDATE, NULL, :4, :5, 'EN_TRATAMIENTO')
-            `, [nextTratamientoId, id_animal, id_veterinario, descripcion_tratamiento, observaciones_cuidado || null]);
-            
-            sendSuccess(res, {
-                id_tratamiento: nextTratamientoId,
+            // Crear tratamiento
+            const resultado = await Tratamiento.create({
                 id_animal,
                 id_veterinario,
                 descripcion_tratamiento,
-                observaciones_cuidado,
-                estado_tratamiento: 'EN_TRATAMIENTO'
-            }, 'Tratamiento creado exitosamente', 201);
+                observaciones_cuidado
+            });
+            
+            sendSuccess(res, resultado, 'Tratamiento creado exitosamente', 201);
             
         } catch (error) {
             handleError(res, error, 'Error al crear tratamiento');
@@ -247,13 +138,13 @@ const VeterinarioController = {
                 return sendError(res, 'ID de tratamiento inválido');
             }
 
-            const tratamiento = await executeQuery(queries.tratamientoPorId, [id]);
+            const tratamiento = await Tratamiento.getById(id);
 
-            if (tratamiento.length === 0) {
+            if (!tratamiento) {
                 return sendError(res, 'Tratamiento no encontrado', 404);
             }
 
-            sendSuccess(res, tratamiento[0], 'Tratamiento obtenido exitosamente');
+            sendSuccess(res, tratamiento, 'Tratamiento obtenido exitosamente');
 
         } catch (error) {
             handleError(res, error, 'Error al obtener tratamiento');
@@ -271,20 +162,21 @@ const VeterinarioController = {
             }
             
             // Verificar existencia
-            const tratamientoExists = await executeQuery('SELECT id_tratamiento FROM Tratamientos WHERE id_tratamiento = :1', [id]);
-            
-            if (tratamientoExists.length === 0) {
+            const tratamientoExists = await Tratamiento.exists(id);
+            if (!tratamientoExists) {
                 return sendError(res, 'El tratamiento especificado no existe', 404);
             }
             
             // Actualizar
-            await executeNonQuery(`
-                UPDATE Tratamientos 
-                SET descripcion_tratamiento = :1,
-                    observaciones_cuidado = :2,
-                    estado_tratamiento = :3
-                WHERE id_tratamiento = :4
-            `, [descripcion_tratamiento, observaciones_cuidado || null, estado_tratamiento || 'EN_TRATAMIENTO', id]);
+            const actualizado = await Tratamiento.update(id, {
+                descripcion_tratamiento,
+                observaciones_cuidado,
+                estado_tratamiento
+            });
+            
+            if (!actualizado) {
+                return sendError(res, 'No se pudo actualizar el tratamiento', 500);
+            }
             
             sendSuccess(res, {
                 id_tratamiento: parseInt(id),
