@@ -9,7 +9,7 @@ QUOTA UNLIMITED ON USERS;
 GRANT CONNECT, RESOURCE TO PROY_FINAL_BD;
 
 -- Crear tablas principales (sin dependencias/relaciones)
-
+--Hola 
 -- Tabla Empleados
 CREATE TABLE Empleados (
     id_empleado NUMBER(10) PRIMARY KEY,
