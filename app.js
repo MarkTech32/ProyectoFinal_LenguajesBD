@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const session = require('express-session'); // Necesitarás instalar: npm install express-session
 const { executeQuery } = require('./config/database');
 const RescatistaController = require('./controllers/RescatistaController');
 const VeterinarioController = require('./controllers/VeterinarioController');
@@ -11,6 +12,14 @@ const PORT = 3000;
 app.use(express.static('public'));
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Configuración de sesiones simple
+app.use(session({
+    secret: 'centro-refugio-secret', // En producción usar variable de entorno
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } // En producción con HTTPS usar true
+}));
 
 // ======= RUTAS DE PÁGINAS =======
 // Ruta principal - Verificar conexión
@@ -55,38 +64,60 @@ app.get('/html/formulario', (req, res) => {
     res.sendFile(__dirname + '/views/formulario.html');
 });
 
-// Login
+// Login - Mostrar página de login
 app.get('/login', (req, res) => {
     res.sendFile(__dirname + '/views/login.html');
 });
 
-// Index (página principal del centro de refugio)
+// Index - Página principal del centro de refugio (requiere autenticación)
 app.get('/index', (req, res) => {
+    // Verificar si el usuario está autenticado
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
     res.sendFile(__dirname + '/views/index.html');
 });
 
 // ======= RUTAS DE AUTENTICACIÓN =======
+// Procesar login
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
+    
     try {
         const result = await executeQuery(
             `SELECT * FROM Empleados WHERE username = :1 AND password_hash = :2`,
             [username, password]
         );
+        
         if (result.length > 0) {
-            // Login exitoso - redirigir al centro de refugio
+            // Login exitoso - crear sesión
+            req.session.user = {
+                id: result[0].ID_EMPLEADO,
+                username: result[0].USERNAME,
+                nombre: result[0].NOMBRE,
+                apellidos: result[0].APELLIDOS
+            };
+            
+            // Redirigir al index
             res.redirect('/index');
         } else {
-            // Login fallido
-            res.send(`
-                <h2>❌ Usuario o contraseña incorrectos</h2>
-                <a href="/login">Volver a intentar</a>
-            `);
+            // Login fallido - redirigir con mensaje de error
+            res.redirect('/login?error=invalid');
         }
     } catch (error) {
         console.error('Error en login:', error);
-        res.status(500).send('Error interno del servidor');
+        res.redirect('/login?error=invalid');
     }
+});
+
+// Logout
+app.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error al cerrar sesión:', err);
+        }
+        res.redirect('/login');
+    });
 });
 
 // ======= RUTAS API - RESCATISTAS =======
@@ -121,6 +152,7 @@ app.listen(PORT, () => {
     console.log('  • http://localhost:3000/index (centro de refugio)');
     console.log('  • http://localhost:3000/dashboard_rescatista');
     console.log('  • http://localhost:3000/dashboard_veterinario');
+    console.log('  • http://localhost:3000/logout (cerrar sesión)');
     console.log('Presiona Ctrl+C para detener el servidor');
 });
 
