@@ -415,6 +415,120 @@ EXCEPTION
         NULL; 
 END;
 /
+--Cursores
+
+CREATE OR REPLACE PROCEDURE sp_listar_tratamientos_por_animal (
+    p_id_animal IN NUMBER
+) AS
+    CURSOR c_tratamientos IS
+        SELECT id_tratamiento, fecha_inicio, fecha_fin, estado_tratamiento
+        FROM Tratamientos
+        WHERE id_animal = p_id_animal;
+
+    v_id_tratamiento Tratamientos.id_tratamiento%TYPE;
+    v_fecha_inicio Tratamientos.fecha_inicio%TYPE;
+    v_fecha_fin Tratamientos.fecha_fin%TYPE;
+    v_estado Tratamientos.estado_tratamiento%TYPE;
+BEGIN
+    OPEN c_tratamientos;
+    LOOP
+        FETCH c_tratamientos INTO v_id_tratamiento, v_fecha_inicio, v_fecha_fin, v_estado;
+        EXIT WHEN c_tratamientos%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE('Tratamiento ID: ' || v_id_tratamiento ||
+                             ' | Inicio: ' || v_fecha_inicio ||
+                             ' | Fin: ' || v_fecha_fin ||
+                             ' | Estado: ' || v_estado);
+    END LOOP;
+    CLOSE c_tratamientos;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE sp_medicamentos_por_vencer IS
+    CURSOR c_meds IS
+        SELECT nombre, fecha_vencimiento
+        FROM Medicamentos
+        WHERE fecha_vencimiento BETWEEN SYSDATE AND SYSDATE + 30;
+
+    v_nombre Medicamentos.nombre%TYPE;
+    v_fecha Medicamentos.fecha_vencimiento%TYPE;
+BEGIN
+    OPEN c_meds;
+    LOOP
+        FETCH c_meds INTO v_nombre, v_fecha;
+        EXIT WHEN c_meds%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE('Medicamento: ' || v_nombre ||
+                             ' | Vence: ' || TO_CHAR(v_fecha, 'YYYY-MM-DD'));
+    END LOOP;
+    CLOSE c_meds;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE sp_animales_en_rescate IS
+    CURSOR c_animales IS
+        SELECT id_animal, especie, nombre
+        FROM Animales
+        WHERE estado_actual IN ('Rescatado', 'En evaluación');
+
+    v_id Animales.id_animal%TYPE;
+    v_especie Animales.especie%TYPE;
+    v_nombre Animales.nombre%TYPE;
+BEGIN
+    OPEN c_animales;
+    LOOP
+        FETCH c_animales INTO v_id, v_especie, v_nombre;
+        EXIT WHEN c_animales%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE('Animal ID: ' || v_id || ' | Especie: ' || v_especie || ' | Nombre: ' || v_nombre);
+    END LOOP;
+    CLOSE c_animales;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE sp_historial_estado_salud (
+    p_id_animal IN NUMBER
+) AS
+    CURSOR c_estado IS
+        SELECT tipo_problema, diagnostico, fecha_registro
+        FROM Estados_Salud
+        WHERE id_animal = p_id_animal
+        ORDER BY fecha_registro;
+
+    v_problema Estados_Salud.tipo_problema%TYPE;
+    v_diag Estados_Salud.diagnostico%TYPE;
+    v_fecha Estados_Salud.fecha_registro%TYPE;
+BEGIN
+    OPEN c_estado;
+    LOOP
+        FETCH c_estado INTO v_problema, v_diag, v_fecha;
+        EXIT WHEN c_estado%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE('Problema: ' || v_problema ||
+                             ' | Diagnóstico: ' || v_diag ||
+                             ' | Fecha: ' || TO_CHAR(v_fecha, 'YYYY-MM-DD'));
+    END LOOP;
+    CLOSE c_estado;
+END;
+/
+
+--Expresiones regulares
+SELECT nombre
+FROM Animales
+WHERE REGEXP_LIKE(nombre, '^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$');
+
+SELECT nombre, correo
+FROM Empleados
+WHERE NOT REGEXP_LIKE(correo, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+
+SELECT
+    id_estado,
+    REGEXP_REPLACE(diagnostico, '[^A-Za-z0-9\s]', '') AS diagnostico_limpio
+FROM Estados_Salud;
+
+SELECT nombre
+FROM Medicamentos
+WHERE REGEXP_LIKE(nombre, '^Anti.*ina$');
 
 
 COMMIT;
