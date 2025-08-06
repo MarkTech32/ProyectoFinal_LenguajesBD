@@ -172,6 +172,21 @@ class Rescate {
                 nextRescateId
             ]);
             
+            //Crear tratamiento automático en estado PENDIENTE
+            const maxTratamientoIdResult = await executeQuery(
+                'SELECT NVL(MAX(id_tratamiento), 0) + 1 as next_id FROM Tratamientos'
+            );
+            const nextTratamientoId = maxTratamientoIdResult[0].NEXT_ID;
+            
+            const insertTratamientoQuery = `
+                INSERT INTO Tratamientos (id_tratamiento, id_animal, id_veterinario, id_cuidador, 
+                                        fecha_inicio, fecha_fin, descripcion_tratamiento, 
+                                        observaciones_cuidado, estado_tratamiento)
+                VALUES (:1, :2, NULL, NULL, NULL, NULL, NULL, NULL, 'PENDIENTE')
+            `;
+            
+            await executeNonQuery(insertTratamientoQuery, [nextTratamientoId, nextAnimalId]);
+            
             animalesCreados.push({
                 id_animal: nextAnimalId,
                 nombre: animal.nombre,
@@ -216,6 +231,9 @@ class Rescate {
             id
         ]);
         
+        // Eliminar tratamientos de animales que se van a eliminar
+        await executeNonQuery('DELETE FROM Tratamientos WHERE id_animal IN (SELECT id_animal FROM Animales WHERE id_rescate = :1)', [id]);
+        
         // Eliminar todos los animales existentes del rescate
         const deleteAnimalesQuery = 'DELETE FROM Animales WHERE id_rescate = :1';
         await executeNonQuery(deleteAnimalesQuery, [id]);
@@ -246,6 +264,21 @@ class Rescate {
                 id
             ]);
             
+            //Crear tratamiento automático en estado PENDIENTE para animales actualizados**
+            const maxTratamientoIdResult = await executeQuery(
+                'SELECT NVL(MAX(id_tratamiento), 0) + 1 as next_id FROM Tratamientos'
+            );
+            const nextTratamientoId = maxTratamientoIdResult[0].NEXT_ID;
+            
+            const insertTratamientoQuery = `
+                INSERT INTO Tratamientos (id_tratamiento, id_animal, id_veterinario, id_cuidador, 
+                                        fecha_inicio, fecha_fin, descripcion_tratamiento, 
+                                        observaciones_cuidado, estado_tratamiento)
+                VALUES (:1, :2, NULL, NULL, NULL, NULL, NULL, NULL, 'PENDIENTE')
+            `;
+            
+            await executeNonQuery(insertTratamientoQuery, [nextTratamientoId, nextAnimalId]);
+            
             animalesActualizados.push({
                 id_animal: nextAnimalId,
                 nombre: animal.nombre,
@@ -275,6 +308,9 @@ class Rescate {
             'SELECT id_animal, nombre FROM Animales WHERE id_rescate = :1',
             [id]
         );
+
+        // Eliminar tratamientos de los animales asociados
+        await executeNonQuery('DELETE FROM Tratamientos WHERE id_animal IN (SELECT id_animal FROM Animales WHERE id_rescate = :1)', [id]);
 
         // Eliminar todos los animales asociados al rescate
         const deleteAnimalesQuery = 'DELETE FROM Animales WHERE id_rescate = :1';
