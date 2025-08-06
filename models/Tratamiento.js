@@ -161,24 +161,64 @@ class Tratamiento {
         };
     }
 
-    // Actualizar tratamiento
+    // Actualizar tratamiento 
     static async update(id, tratamientoData) {
-        const { descripcion_tratamiento, observaciones_cuidado, estado_tratamiento } = tratamientoData;
+        const { 
+            id_veterinario, 
+            descripcion_tratamiento, 
+            observaciones_cuidado, 
+            estado_tratamiento,
+            fecha_inicio 
+        } = tratamientoData;
+        
+        // Construir query dinámicamente según los campos que se van a actualizar
+        let setClauses = [];
+        let params = [];
+        let paramIndex = 1;
+        
+        if (descripcion_tratamiento !== undefined) {
+            setClauses.push(`descripcion_tratamiento = :${paramIndex}`);
+            params.push(descripcion_tratamiento);
+            paramIndex++;
+        }
+        
+        if (observaciones_cuidado !== undefined) {
+            setClauses.push(`observaciones_cuidado = :${paramIndex}`);
+            params.push(observaciones_cuidado || null);
+            paramIndex++;
+        }
+        
+        if (estado_tratamiento !== undefined) {
+            setClauses.push(`estado_tratamiento = :${paramIndex}`);
+            params.push(estado_tratamiento);
+            paramIndex++;
+        }
+        
+        if (id_veterinario !== undefined) {
+            setClauses.push(`id_veterinario = :${paramIndex}`);
+            params.push(id_veterinario);
+            paramIndex++;
+        }
+        
+        if (fecha_inicio !== undefined) {
+            setClauses.push(`fecha_inicio = TO_DATE(:${paramIndex}, 'YYYY-MM-DD')`);
+            params.push(fecha_inicio);
+            paramIndex++;
+        }
+        
+        if (setClauses.length === 0) {
+            return false; // No hay nada que actualizar
+        }
         
         const updateQuery = `
             UPDATE Tratamientos 
-            SET descripcion_tratamiento = :1,
-                observaciones_cuidado = :2,
-                estado_tratamiento = :3
-            WHERE id_tratamiento = :4
+            SET ${setClauses.join(', ')}
+            WHERE id_tratamiento = :${paramIndex}
         `;
         
-        const filasAfectadas = await executeNonQuery(updateQuery, [
-            descripcion_tratamiento,
-            observaciones_cuidado || null,
-            estado_tratamiento || 'EN_TRATAMIENTO',
-            id
-        ]);
+        params.push(id);
+        
+        const filasAfectadas = await executeNonQuery(updateQuery, params);
         
         return filasAfectadas > 0;
     }

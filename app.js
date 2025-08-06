@@ -21,6 +21,14 @@ app.use(session({
     cookie: { secure: false } // En producción con HTTPS usar true
 }));
 
+// ======= MIDDLEWARE DE AUTENTICACIÓN =======
+function requireAuth(req, res, next) {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    next();
+}
+
 // ======= RUTAS DE PÁGINAS =======
 // Ruta principal - Verificar conexión
 app.get('/', async (req, res) => {
@@ -50,17 +58,17 @@ app.get('/', async (req, res) => {
 });
 
 // Dashboard de rescatistas
-app.get('/dashboard_rescatista', (req, res) => {
+app.get('/dashboard_rescatista', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/views/dashboard_rescatista.html');
 });
 
 // Dashboard de veterinarios
-app.get('/dashboard_veterinario', (req, res) => {
+app.get('/dashboard_veterinario', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/views/dashboard_veterinario.html');
 });
 
-// Formulario
-app.get('/html/formulario', (req, res) => {
+// Formulario 
+app.get('/html/formulario', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/views/formulario.html');
 });
 
@@ -69,12 +77,8 @@ app.get('/login', (req, res) => {
     res.sendFile(__dirname + '/views/login.html');
 });
 
-// Index - Página principal del centro de refugio (requiere autenticación)
-app.get('/index', (req, res) => {
-    // Verificar si el usuario está autenticado
-    if (!req.session.user) {
-        return res.redirect('/login');
-    }
+// Index - Página principal del centro de refugio 
+app.get('/index', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/views/index.html');
 });
 
@@ -120,28 +124,28 @@ app.get('/logout', (req, res) => {
     });
 });
 
-// ======= RUTAS API - RESCATISTAS =======
-app.get('/api/rescates', RescatistaController.getAllRescates);
-app.get('/api/rescates/:id', RescatistaController.getRescateById);  
-app.post('/api/rescates', RescatistaController.createRescate);
-app.put('/api/rescates/:id', RescatistaController.updateRescate);
-app.delete('/api/rescates/:id', RescatistaController.deleteRescate);
-app.get('/api/empleados', RescatistaController.getAllEmpleados);   
-app.get('/api/especies', RescatistaController.getAllEspecies);
+// ======= RUTAS API - RESCATISTAS (CON PROTECCIÓN) =======
+app.get('/api/rescates', requireAuth, RescatistaController.getAllRescates);
+app.get('/api/rescates/:id', requireAuth, RescatistaController.getRescateById);  
+app.post('/api/rescates', requireAuth, RescatistaController.createRescate);
+app.put('/api/rescates/:id', requireAuth, RescatistaController.updateRescate);
+app.delete('/api/rescates/:id', requireAuth, RescatistaController.deleteRescate);
+app.get('/api/empleados', requireAuth, RescatistaController.getAllEmpleados);   
+app.get('/api/especies', requireAuth, RescatistaController.getAllEspecies);
 
-// ======= RUTAS API - VETERINARIOS =======
+// ======= RUTAS API - VETERINARIOS (CON PROTECCIÓN) =======
 // Rutas para el dashboard de veterinarios (3 categorías)
-app.get('/api/veterinario/pendientes', VeterinarioController.getAnimalesPendientes);
-app.get('/api/veterinario/en-tratamiento', VeterinarioController.getAnimalesEnTratamiento);
-app.get('/api/veterinario/listos', VeterinarioController.getAnimalesListos);
+app.get('/api/veterinario/pendientes', requireAuth, VeterinarioController.getAnimalesPendientes);
+app.get('/api/veterinario/en-tratamiento', requireAuth, VeterinarioController.getAnimalesEnTratamiento);
+app.get('/api/veterinario/listos', requireAuth, VeterinarioController.getAnimalesListos);
 
 // Rutas para manejo de tratamientos
-app.post('/api/veterinario/tratamientos', VeterinarioController.createTratamiento);
-app.get('/api/veterinario/tratamientos/:id', VeterinarioController.getTratamientoById);
-app.put('/api/veterinario/tratamientos/:id', VeterinarioController.updateTratamiento);
+app.post('/api/veterinario/tratamientos', requireAuth, VeterinarioController.createTratamiento);
+app.get('/api/veterinario/tratamientos/:id', requireAuth, VeterinarioController.getTratamientoById);
+app.put('/api/veterinario/tratamientos/:id', requireAuth, VeterinarioController.updateTratamiento);
 
 // Ruta para completar tratamiento
-app.put('/api/veterinario/completar/:id', VeterinarioController.completarTratamiento);
+app.put('/api/veterinario/completar/:id', requireAuth, VeterinarioController.completarTratamiento);
 
 // ======= INICIAR SERVIDOR =======
 app.listen(PORT, () => {
