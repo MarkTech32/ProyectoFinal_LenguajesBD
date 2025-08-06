@@ -343,5 +343,79 @@ VALUES (14, 'Pteroglossus torquatus (Tucancillo Collarejo)', 'Ramphastidae', 'Bo
 INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
 VALUES (15, 'Leopardus pardalis (Ocelote)', 'Felidae', 'Bosque húmedo y seco', 'Preocupación menor', 'Carnívoro');
 
+--Triggers
+
+CREATE OR REPLACE TRIGGER trg_evitar_medicamento_vencido
+BEFORE INSERT OR UPDATE ON Medicamentos
+FOR EACH ROW
+BEGIN
+    IF :NEW.fecha_vencimiento < SYSDATE THEN
+        RAISE_APPLICATION_ERROR(-20001, 'No se puede registrar un medicamento ya vencido.');
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_nombre_animal_default
+BEFORE INSERT ON Animales
+FOR EACH ROW
+BEGIN
+    IF :NEW.nombre IS NULL THEN
+        :NEW.nombre := 'Sin Nombre';
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_validar_fechas_tratamiento
+BEFORE INSERT OR UPDATE ON Tratamientos
+FOR EACH ROW
+BEGIN
+    IF :NEW.fecha_fin IS NOT NULL AND :NEW.fecha_inicio IS NOT NULL THEN
+        IF :NEW.fecha_fin < :NEW.fecha_inicio THEN
+            RAISE_APPLICATION_ERROR(-20002, 'La fecha de fin no puede ser anterior a la fecha de inicio.');
+        END IF;
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_normalizar_correo
+BEFORE INSERT OR UPDATE ON Empleados
+FOR EACH ROW
+BEGIN
+    :NEW.correo := LOWER(:NEW.correo);
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_validar_diagnostico
+BEFORE INSERT OR UPDATE ON Estados_Salud
+FOR EACH ROW
+BEGIN
+    IF :NEW.tipo_problema IS NOT NULL AND :NEW.diagnostico IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Debe ingresar un diagnóstico si se reporta un problema.');
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_validar_estado_liberacion
+BEFORE INSERT ON Liberaciones
+FOR EACH ROW
+DECLARE
+    v_estado_tratamiento VARCHAR2(50);
+BEGIN
+    SELECT estado_tratamiento INTO v_estado_tratamiento
+    FROM Tratamientos
+    WHERE id_animal = :NEW.id_animal
+    ORDER BY fecha_inicio DESC
+    FETCH FIRST 1 ROWS ONLY;
+
+    IF v_estado_tratamiento != 'COMPLETADO' THEN
+        RAISE_APPLICATION_ERROR(-20004, 'El animal no puede ser liberado hasta completar el tratamiento.');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        NULL; 
+END;
+/
+
+
 
 COMMIT;
