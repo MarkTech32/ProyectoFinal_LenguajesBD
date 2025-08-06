@@ -2,6 +2,7 @@
 const Tratamiento = require('../models/Tratamiento');
 const Animal = require('../models/Animal');
 const Empleado = require('../models/Empleado');
+const { executeQuery } = require('../config/database');
 
 // ========== HELPERS GENÉRICOS ==========
 const handleError = (res, error, message = 'Error interno del servidor') => {
@@ -28,6 +29,20 @@ const sendError = (res, message, status = 400) => {
         success: false,
         message
     });
+};
+
+// Verificar si el usuario es veterinario
+const isVeterinario = async (idEmpleado) => {
+    try {
+        const result = await executeQuery(
+            'SELECT id_rol FROM Empleados_Roles WHERE id_empleado = :1 AND id_rol = 2',
+            [idEmpleado]
+        );
+        return result.length > 0;
+    } catch (error) {
+        console.error('Error verificando rol de veterinario:', error);
+        return false;
+    }
 };
 
 // ========== CONTROLLER ==========
@@ -72,6 +87,11 @@ const VeterinarioController = {
                 return sendError(res, 'ID de tratamiento inválido');
             }
 
+            // Verificar que el usuario sea veterinario
+            if (!await isVeterinario(req.session.user.id)) {
+                return sendError(res, 'Solo los veterinarios pueden completar tratamientos', 403);
+            }
+
             const resultado = await Tratamiento.completar(id);
 
             if (!resultado.success) {
@@ -85,44 +105,62 @@ const VeterinarioController = {
         }
     },
 
-    // Crear nuevo tratamiento
+    // Crear nuevo tratamiento 
     createTratamiento: async (req, res) => {
         try {
-            const { id_animal, id_veterinario, descripcion_tratamiento, observaciones_cuidado } = req.body;
+            const { id_animal, descripcion_tratamiento, observaciones_cuidado } = req.body;
             
-            // Validar datos requeridos
-            if (!id_animal || !id_veterinario || !descripcion_tratamiento) {
-                return sendError(res, 'ID del animal, veterinario y descripción del tratamiento son obligatorios');
+            // Obtener veterinario de la sesión
+            const id_veterinario = req.session.user.id;
+            
+            // Verificar que el usuario sea veterinario
+            if (!await isVeterinario(id_veterinario)) {
+                return sendError(res, 'Solo los veterinarios pueden crear tratamientos', 403);
             }
             
-            // Verificar existencias en paralelo
-            const [animalExists, veterinarioExists, tieneTraTamientoActivo] = await Promise.all([
-                Animal.exists(id_animal),
-                Empleado.exists(id_veterinario),
-                Tratamiento.hasActiveTreatment(id_animal)
-            ]);
+            // Validar datos requeridos
+            if (!id_animal || !descripcion_tratamiento) {
+                return sendError(res, 'ID del animal y descripción del tratamiento son obligatorios');
+            }
             
-            if (!animalExists) {
+            // Verificar que el animal existe
+            if (!await Animal.exists(id_animal)) {
                 return sendError(res, 'El animal especificado no existe', 404);
             }
             
-            if (!veterinarioExists) {
-                return sendError(res, 'El veterinario especificado no existe', 404);
+            // Buscar el tratamiento PENDIENTE del animal
+            const tratamientoPendiente = await executeQuery(
+                'SELECT id_tratamiento FROM Tratamientos WHERE id_animal = :1 AND estado_tratamiento = \'PENDIENTE\'',
+                [id_animal]
+            );
+            
+            if (tratamientoPendiente.length === 0) {
+                return sendError(res, 'No se encontró un tratamiento pendiente para este animal', 404);
             }
             
-            if (tieneTraTamientoActivo) {
-                return sendError(res, 'El animal ya tiene un tratamiento activo');
+            const idTratamiento = tratamientoPendiente[0].ID_TRATAMIENTO;
+            
+            // Actualizar el tratamiento pendiente a EN_TRATAMIENTO
+            const actualizado = await Tratamiento.update(idTratamiento, {
+                id_veterinario,
+                descripcion_tratamiento,
+                observaciones_cuidado,
+                fecha_inicio: new Date().toISOString().split('T')[0],
+                estado_tratamiento: 'EN_TRATAMIENTO'
+            });
+            
+            if (!actualizado) {
+                return sendError(res, 'No se pudo iniciar el tratamiento', 500);
             }
             
-            // Crear tratamiento
-            const resultado = await Tratamiento.create({
+            sendSuccess(res, {
+                id_tratamiento: idTratamiento,
                 id_animal,
                 id_veterinario,
                 descripcion_tratamiento,
-                observaciones_cuidado
-            });
-            
-            sendSuccess(res, resultado, 'Tratamiento creado exitosamente', 201);
+                observaciones_cuidado,
+                estado_tratamiento: 'EN_TRATAMIENTO'
+            }, 'Tratamiento iniciado exitosamente', 201);
             
         } catch (error) {
             handleError(res, error, 'Error al crear tratamiento');
@@ -159,6 +197,11 @@ const VeterinarioController = {
             
             if (!validateId(id)) {
                 return sendError(res, 'ID de tratamiento inválido');
+            }
+            
+            // Verificar que el usuario sea veterinario
+            if (!await isVeterinario(req.session.user.id)) {
+                return sendError(res, 'Solo los veterinarios pueden actualizar tratamientos', 403);
             }
             
             // Verificar existencia

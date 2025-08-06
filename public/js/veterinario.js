@@ -49,11 +49,8 @@ function mostrarAnimalesPendientes(animales) {
             <td><small>${animal.NOMBRE_RESCATISTA}</small></td>
             <td><span class="badge bg-warning">${calcularDias(animal.FECHA_RESCATE)} días</span></td>
             <td>
-                <button type="button" class="btn btn-sm btn-warning me-1" onclick="evaluarAnimal(${animal.ID_ANIMAL})">
-                    Evaluar
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-info" onclick="verDetalles(${animal.ID_ANIMAL})">
-                    Ver
+                <button type="button" class="btn btn-sm btn-warning" onclick="evaluarAnimal(${animal.ID_ANIMAL})">
+                    <i class="bi bi-clipboard-pulse"></i> Evaluar
                 </button>
             </td>
         </tr>
@@ -73,10 +70,10 @@ function mostrarAnimalesEnTratamiento(tratamientos) {
             <td><span class="badge bg-primary">${tratamiento.ESTADO_SALUD || 'N/A'}</span></td>
             <td>
                 <button type="button" class="btn btn-sm btn-info me-1" onclick="editarTratamiento(${tratamiento.ID_TRATAMIENTO})">
-                    Editar
+                    <i class="bi bi-pencil"></i> Editar
                 </button>
                 <button type="button" class="btn btn-sm btn-success" onclick="completarTratamiento(${tratamiento.ID_TRATAMIENTO})">
-                    Completar
+                    <i class="bi bi-check-circle"></i> Completar
                 </button>
             </td>
         </tr>
@@ -97,10 +94,10 @@ function mostrarAnimalesListos(animales) {
             <td><span class="badge bg-success">Completado</span></td>
             <td>
                 <button type="button" class="btn btn-sm btn-success me-1" onclick="asignarCuidador(${animal.ID_ANIMAL})">
-                    Asignar
+                    <i class="bi bi-person-plus"></i> Asignar
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="verHistorial(${animal.ID_ANIMAL})">
-                    Historial
+                    <i class="bi bi-clock-history"></i> Historial
                 </button>
             </td>
         </tr>
@@ -144,11 +141,6 @@ async function completarTratamiento(idTratamiento) {
 function asignarCuidador(idAnimal) {
     console.log(`TODO: Asignar cuidador al animal ID: ${idAnimal}`);
     // TODO: Implementar formulario o modal
-}
-
-function verDetalles(idAnimal) {
-    console.log(`TODO: Ver detalles del animal ID: ${idAnimal}`);
-    // TODO: Implementar modal de detalles
 }
 
 function verHistorial(idAnimal) {
