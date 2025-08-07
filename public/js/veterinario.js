@@ -69,6 +69,9 @@ function mostrarAnimalesEnTratamiento(tratamientos) {
             <td><span class="badge bg-info">${calcularDias(tratamiento.FECHA_INICIO)} días</span></td>
             <td><span class="badge bg-primary">${tratamiento.ESTADO_SALUD || 'N/A'}</span></td>
             <td>
+                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="verDetalleCompleto(${tratamiento.ID_ANIMAL})">
+                    <i class="bi bi-eye"></i> Ver
+                </button>
                 <button type="button" class="btn btn-sm btn-info me-1" onclick="editarTratamiento(${tratamiento.ID_TRATAMIENTO})">
                     <i class="bi bi-pencil"></i> Editar
                 </button>
@@ -146,6 +149,168 @@ function asignarCuidador(idAnimal) {
 function verHistorial(idAnimal) {
     console.log(`TODO: Ver historial del animal ID: ${idAnimal}`);
     // TODO: Implementar página de historial
+}
+
+// ========== FUNCIÓN PARA VER DETALLE COMPLETO ==========
+async function verDetalleCompleto(idAnimal) {
+    try {
+        // Obtener información completa del animal
+        const response = await fetch(`/api/veterinario/animal-completo/${idAnimal}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarModalDetalleCompleto(result.data);
+        } else {
+            mostrarMensaje('Error cargando información del animal', 'error');
+        }
+    } catch (error) {
+        console.error('Error cargando detalle:', error);
+        mostrarMensaje('Error de conexión', 'error');
+    }
+}
+
+function mostrarModalDetalleCompleto(data) {
+    const { animal, rescate, estadoSalud, tratamiento, medicamentos } = data;
+    
+    // Crear HTML del modal
+    const modalHTML = `
+        <div class="modal fade" id="modalDetalleCompleto" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-clipboard-data"></i> Información Completa - ${animal.nombre}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Información del Animal -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary"><i class="bi bi-info-circle"></i> Información del Animal</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <tr><td><strong>Nombre:</strong></td><td>${animal.nombre}</td></tr>
+                                        <tr><td><strong>Especie:</strong></td><td>${animal.especie_nombre}</td></tr>
+                                        <tr><td><strong>Edad:</strong></td><td>${animal.edad || 'N/A'} años</td></tr>
+                                        <tr><td><strong>Sexo:</strong></td><td>${animal.sexo}</td></tr>
+                                        <tr><td><strong>Raza:</strong></td><td>${animal.raza || 'N/A'}</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información del Rescate -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-success"><i class="bi bi-search"></i> Información del Rescate</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <tr><td><strong>Fecha:</strong></td><td>${rescate.fecha_rescate}</td></tr>
+                                        <tr><td><strong>Lugar:</strong></td><td>${rescate.lugar}</td></tr>
+                                        <tr><td><strong>Rescatista:</strong></td><td>${rescate.nombre_rescatista}</td></tr>
+                                        <tr><td><strong>Detalles:</strong></td><td>${rescate.detalles}</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estado de Salud -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-warning"><i class="bi bi-heart-pulse"></i> Evaluación Médica</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <tr><td><strong>Fecha Evaluación:</strong></td><td>${estadoSalud.fecha_evaluacion}</td></tr>
+                                        <tr><td><strong>Tipo Problema:</strong></td><td>${estadoSalud.tipo_problema}</td></tr>
+                                        <tr><td><strong>Diagnóstico:</strong></td><td>${estadoSalud.diagnostico}</td></tr>
+                                        <tr><td><strong>Estado:</strong></td><td><span class="badge bg-info">${estadoSalud.estado}</span></td></tr>
+                                        <tr><td><strong>Veterinario:</strong></td><td>${estadoSalud.nombre_veterinario}</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tratamiento -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-danger"><i class="bi bi-clipboard-pulse"></i> Plan de Tratamiento</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <tr><td><strong>Fecha Inicio:</strong></td><td>${tratamiento.fecha_inicio}</td></tr>
+                                        <tr><td><strong>Descripción:</strong></td><td>${tratamiento.descripcion_tratamiento}</td></tr>
+                                        <tr><td><strong>Observaciones:</strong></td><td>${tratamiento.observaciones_cuidado || 'N/A'}</td></tr>
+                                        <tr><td><strong>Estado:</strong></td><td><span class="badge bg-success">${tratamiento.estado_tratamiento}</span></td></tr>
+                                        <tr><td><strong>Días en Tratamiento:</strong></td><td>${calcularDias(tratamiento.fecha_inicio)} días</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Medicamentos -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="text-info"><i class="bi bi-capsule"></i> Medicamentos</h6>
+                                ${medicamentos.length > 0 ? `
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>Medicamento</th>
+                                                    <th>Tipo</th>
+                                                    <th>Dosis</th>
+                                                    <th>Inicio</th>
+                                                    <th>Fin</th>
+                                                    <th>Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${medicamentos.map(med => `
+                                                    <tr>
+                                                        <td><strong>${med.nombre_medicamento}</strong></td>
+                                                        <td><small class="text-muted">${med.tipo_medicamento}</small></td>
+                                                        <td>${med.dosis}</td>
+                                                        <td>${med.fecha_inicio_medicamento}</td>
+                                                        <td>${med.fecha_fin_medicamento || 'Continuo'}</td>
+                                                        <td>
+                                                            ${new Date(med.fecha_fin_medicamento || '9999-12-31') >= new Date() 
+                                                                ? '<span class="badge bg-success">Activo</span>' 
+                                                                : '<span class="badge bg-secondary">Finalizado</span>'}
+                                                        </td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ` : '<p class="text-muted">No se han asignado medicamentos.</p>'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remover modal existente si existe
+    const modalExistente = document.getElementById('modalDetalleCompleto');
+    if (modalExistente) {
+        modalExistente.remove();
+    }
+    
+    // Agregar modal al DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalleCompleto'));
+    modal.show();
+    
+    // Limpiar modal del DOM cuando se cierre
+    document.getElementById('modalDetalleCompleto').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
 }
 
 // ========== UTILIDADES ==========

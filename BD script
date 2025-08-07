@@ -149,6 +149,38 @@ ALTER TABLE Tratamientos
 MODIFY estado_tratamiento DEFAULT 'PENDIENTE';
 
 
+-- Estandarización de la tabla Estados_Salud para que tenga 4 tipos de estados específicos
+-- Los estados permitidos son: Enfermo, Saludable, Herido, En recuperación
+
+-- Actualizar registros existentes a los valores estandarizados
+UPDATE Estados_Salud 
+SET estado = 'Enfermo' 
+WHERE UPPER(estado) LIKE '%ENFERM%';
+
+UPDATE Estados_Salud 
+SET estado = 'Saludable' 
+WHERE UPPER(estado) LIKE '%SALUDABLE%' 
+   OR UPPER(estado) LIKE '%SANO%';
+
+UPDATE Estados_Salud 
+SET estado = 'Herido' 
+WHERE UPPER(estado) LIKE '%HERIDO%' 
+   OR UPPER(estado) LIKE '%LESION%';
+
+UPDATE Estados_Salud 
+SET estado = 'En recuperación' 
+WHERE UPPER(estado) LIKE '%RECUPER%';
+
+-- Agregamos constraint para validar solo valores permitidos
+ALTER TABLE Estados_Salud 
+ADD CONSTRAINT chk_estado_salud 
+CHECK (estado IN ('Enfermo', 'Saludable', 'Herido', 'En recuperación'));
+
+-- Establecemos el valor 'Enfermo' por defecto
+ALTER TABLE Estados_Salud 
+MODIFY estado DEFAULT 'Enfermo';
+
+
 
 -- Tabla Tratamiento_Medicamentos (depende de Tratamientos y Medicamentos)
 CREATE TABLE Tratamiento_Medicamentos (
@@ -342,6 +374,75 @@ VALUES (14, 'Pteroglossus torquatus (Tucancillo Collarejo)', 'Ramphastidae', 'Bo
 
 INSERT INTO Especies (id_especie, nombre_cientifico, familia, habitat_natural, estado_conservacion, dieta) 
 VALUES (15, 'Leopardus pardalis (Ocelote)', 'Felidae', 'Bosque húmedo y seco', 'Preocupación menor', 'Carnívoro');
+
+-- Insertar medicamentos para los aniamales. Divididos por tipos de medicamentos
+-- Antibióticos
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (1, 'Amoxicilina', 'Antibiótico', 50, TO_DATE('2026-03-15', 'YYYY-MM-DD'), 'VetSupply CR', 'Estante A1');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (2, 'Enrofloxacina', 'Antibiótico', 30, TO_DATE('2025-12-20', 'YYYY-MM-DD'), 'Farmacéuticos Unidos', 'Estante A2');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (3, 'Penicilina G', 'Antibiótico', 25, TO_DATE('2026-01-10', 'YYYY-MM-DD'), 'VetSupply CR', 'Refrigerador B1');
+
+-- Analgésicos y Antiinflamatorios
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (4, 'Meloxicam', 'Antiinflamatorio', 40, TO_DATE('2026-05-30', 'YYYY-MM-DD'), 'Farmacéuticos Unidos', 'Estante B3');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (5, 'Tramadol', 'Analgésico', 20, TO_DATE('2025-11-15', 'YYYY-MM-DD'), 'VetSupply CR', 'Caja Fuerte C1');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (6, 'Ketoprofeno', 'Antiinflamatorio', 35, TO_DATE('2026-02-28', 'YYYY-MM-DD'), 'Distribuidora Médica', 'Estante B2');
+
+-- Sedantes y Tranquilizantes
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (7, 'Xilazina', 'Sedante', 15, TO_DATE('2026-04-10', 'YYYY-MM-DD'), 'VetSupply CR', 'Caja Fuerte C2');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (8, 'Ketamina', 'Anestésico', 10, TO_DATE('2025-10-25', 'YYYY-MM-DD'), 'Farmacéuticos Unidos', 'Caja Fuerte C1');
+
+-- Vitaminas y Suplementos
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (9, 'Complejo Vitamínico B', 'Vitamina', 60, TO_DATE('2026-08-20', 'YYYY-MM-DD'), 'Distribuidora Médica', 'Estante D1');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (10, 'Vitamina C', 'Vitamina', 45, TO_DATE('2026-06-15', 'YYYY-MM-DD'), 'VetSupply CR', 'Estante D2');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (11, 'Calcio + Fósforo', 'Suplemento', 30, TO_DATE('2027-01-30', 'YYYY-MM-DD'), 'Farmacéuticos Unidos', 'Estante D3');
+
+-- Antiparasitarios
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (12, 'Ivermectina', 'Antiparasitario', 25, TO_DATE('2026-03-05', 'YYYY-MM-DD'), 'Distribuidora Médica', 'Estante E1');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (13, 'Fenbendazol', 'Antiparasitario', 20, TO_DATE('2025-12-10', 'YYYY-MM-DD'), 'VetSupply CR', 'Estante E2');
+
+-- Tratamientos Tópicos
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (14, 'Pomada Antibiótica', 'Tópico', 40, TO_DATE('2026-07-20', 'YYYY-MM-DD'), 'Farmacéuticos Unidos', 'Estante F1');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (15, 'Solución Antiséptica', 'Antiséptico', 55, TO_DATE('2026-09-10', 'YYYY-MM-DD'), 'Distribuidora Médica', 'Estante F2');
+
+-- Fluidos y Electrolitos
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (16, 'Suero Fisiológico', 'Fluido', 80, TO_DATE('2027-02-15', 'YYYY-MM-DD'), 'VetSupply CR', 'Estante G1');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (17, 'Lactato de Ringer', 'Fluido', 60, TO_DATE('2026-12-05', 'YYYY-MM-DD'), 'Farmacéuticos Unidos', 'Estante G2');
+
+-- Medicamentos Especializados
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (18, 'Dexametasona', 'Corticoide', 15, TO_DATE('2026-01-25', 'YYYY-MM-DD'), 'Distribuidora Médica', 'Refrigerador B2');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (19, 'Furosemida', 'Diurético', 20, TO_DATE('2025-11-30', 'YYYY-MM-DD'), 'VetSupply CR', 'Estante H1');
+
+INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
+VALUES (20, 'Omeprazol', 'Protector Gástrico', 35, TO_DATE('2026-04-20', 'YYYY-MM-DD'), 'Farmacéuticos Unidos', 'Estante H2');
 
 --Triggers
 

@@ -2,7 +2,8 @@
 const Tratamiento = require('../models/Tratamiento');
 const Animal = require('../models/Animal');
 const Empleado = require('../models/Empleado');
-const { executeQuery } = require('../config/database');
+const EstadoSalud = require('../models/EstadoSalud');
+const { executeQuery, executeNonQuery } = require('../config/database');
 
 // ========== HELPERS GENÉRICOS ==========
 const handleError = (res, error, message = 'Error interno del servidor') => {
@@ -105,10 +106,18 @@ const VeterinarioController = {
         }
     },
 
-    // Crear nuevo tratamiento 
+    // Crear nuevo tratamiento (ACTUALIZADO COMPLETO)
     createTratamiento: async (req, res) => {
         try {
-            const { id_animal, descripcion_tratamiento, observaciones_cuidado } = req.body;
+            const { 
+                id_animal, 
+                tipo_problema, 
+                diagnostico, 
+                estado, 
+                descripcion_tratamiento, 
+                observaciones_cuidado,
+                medicamentos 
+            } = req.body;
             
             // Obtener veterinario de la sesión
             const id_veterinario = req.session.user.id;
@@ -119,8 +128,8 @@ const VeterinarioController = {
             }
             
             // Validar datos requeridos
-            if (!id_animal || !descripcion_tratamiento) {
-                return sendError(res, 'ID del animal y descripción del tratamiento son obligatorios');
+            if (!id_animal || !tipo_problema || !diagnostico || !estado || !descripcion_tratamiento) {
+                return sendError(res, 'Todos los campos obligatorios deben ser completados');
             }
             
             // Verificar que el animal existe
@@ -140,7 +149,16 @@ const VeterinarioController = {
             
             const idTratamiento = tratamientoPendiente[0].ID_TRATAMIENTO;
             
-            // Actualizar el tratamiento pendiente a EN_TRATAMIENTO
+            // 1. Crear estado de salud
+            const estadoSalud = await EstadoSalud.create({
+                id_animal,
+                tipo_problema,
+                diagnostico,
+                estado,
+                id_veterinario
+            });
+            
+            // 2. Actualizar tratamiento a EN_TRATAMIENTO
             const actualizado = await Tratamiento.update(idTratamiento, {
                 id_veterinario,
                 descripcion_tratamiento,
@@ -153,17 +171,51 @@ const VeterinarioController = {
                 return sendError(res, 'No se pudo iniciar el tratamiento', 500);
             }
             
+            // 3. Crear medicamentos (solo si no está saludable y hay medicamentos)
+            let medicamentosCreados = [];
+            if (estado !== 'Saludable' && medicamentos && medicamentos.length > 0) {
+                for (const medicamento of medicamentos) {
+                    const { id_medicamento, dosis, fecha_inicio_medicamento, fecha_fin_medicamento } = medicamento;
+                    
+                    if (id_medicamento && dosis && fecha_inicio_medicamento) {
+                        const insertMedicamentoQuery = `
+                            INSERT INTO Tratamiento_Medicamentos (id_tratamiento, id_medicamento, dosis, fecha_inicio_medicamento, fecha_fin_medicamento)
+                            VALUES (:1, :2, :3, TO_DATE(:4, 'YYYY-MM-DD'), :5)
+                        `;
+                        
+                        await executeNonQuery(insertMedicamentoQuery, [
+                            idTratamiento,
+                            id_medicamento,
+                            dosis,
+                            fecha_inicio_medicamento,
+                            fecha_fin_medicamento ? `TO_DATE('${fecha_fin_medicamento}', 'YYYY-MM-DD')` : null
+                        ]);
+                        
+                        medicamentosCreados.push({
+                            id_medicamento,
+                            dosis,
+                            fecha_inicio_medicamento,
+                            fecha_fin_medicamento
+                        });
+                    }
+                }
+            }
+            
             sendSuccess(res, {
                 id_tratamiento: idTratamiento,
-                id_animal,
-                id_veterinario,
-                descripcion_tratamiento,
-                observaciones_cuidado,
-                estado_tratamiento: 'EN_TRATAMIENTO'
-            }, 'Tratamiento iniciado exitosamente', 201);
+                estado_salud: estadoSalud,
+                tratamiento: {
+                    id_animal,
+                    id_veterinario,
+                    descripcion_tratamiento,
+                    observaciones_cuidado,
+                    estado_tratamiento: 'EN_TRATAMIENTO'
+                },
+                medicamentos: medicamentosCreados
+            }, 'Evaluación veterinaria completada exitosamente', 201);
             
         } catch (error) {
-            handleError(res, error, 'Error al crear tratamiento');
+            handleError(res, error, 'Error al crear evaluación veterinaria');
         }
     },
 

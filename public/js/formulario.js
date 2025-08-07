@@ -30,12 +30,61 @@ const tablaConfigs = {
         ]
     },
     tratamientos: {
-        titulo: 'Tratamiento',
+        titulo: 'Evaluación Veterinaria',
         endpoint: '/api/veterinario/tratamientos',
         dashboardUrl: '/dashboard_veterinario',
         campos: [
-            { name: 'descripcion_tratamiento', type: 'textarea', label: 'Diagnóstico y Tratamiento', required: true, placeholder: 'Describa el diagnóstico y el plan de tratamiento para el animal', rows: 4 },
-            { name: 'observaciones_cuidado', type: 'textarea', label: 'Observaciones de Cuidado', required: false, placeholder: 'Instrucciones especiales o observaciones adicionales', rows: 3 }
+            // Evaluación Médica (Estados_Salud)
+            { name: 'tipo_problema', type: 'text', label: 'Tipo de Problema', required: true, placeholder: 'Ej: Herida, Enfermedad, Desnutrición, etc.' },
+            { name: 'diagnostico', type: 'textarea', label: 'Diagnóstico Médico', required: true, placeholder: 'Diagnóstico detallado del estado del animal', rows: 3 },
+            { name: 'estado', type: 'select', label: 'Estado del Animal', required: true, opciones: [
+                { value: 'Enfermo', text: 'Enfermo' },
+                { value: 'Saludable', text: 'Saludable' },
+                { value: 'Herido', text: 'Herido' },
+                { value: 'En recuperación', text: 'En recuperación' }
+            ]},
+            
+            // Plan de Tratamiento (Tratamientos)
+            { name: 'descripcion_tratamiento', type: 'textarea', label: 'Plan de Tratamiento', required: true, placeholder: 'Describa el plan de tratamiento a seguir', rows: 3 },
+            { name: 'observaciones_cuidado', type: 'textarea', label: 'Observaciones de Cuidado', required: false, placeholder: 'Instrucciones especiales para los cuidadores', rows: 2 },
+            
+            // Medicamentos (Tratamiento_Medicamentos)
+            {
+                name: 'medicamentos',
+                type: 'subform',
+                label: 'Medicamentos',
+                required: false,
+                minItems: 0,
+                campos: [
+                    {
+                        name: 'id_medicamento',
+                        type: 'select',
+                        label: 'Medicamento',
+                        required: true,
+                        endpoint: '/api/medicamentos',
+                        placeholder: 'Seleccione un medicamento'
+                    },
+                    {
+                        name: 'dosis',
+                        type: 'text',
+                        label: 'Dosis',
+                        required: true,
+                        placeholder: 'Ej: 5mg cada 8 horas'
+                    },
+                    {
+                        name: 'fecha_inicio_medicamento',
+                        type: 'date',
+                        label: 'Fecha de Inicio',
+                        required: true
+                    },
+                    {
+                        name: 'fecha_fin_medicamento',
+                        type: 'date',
+                        label: 'Fecha de Fin',
+                        required: false
+                    }
+                ]
+            }
         ]
     }
 };
@@ -109,10 +158,23 @@ function generarHTMLCampo(campo) {
             inputHTML = `<textarea class="form-control" id="${campo.name}" name="${campo.name}" rows="${campo.rows || 3}" placeholder="${campo.placeholder || ''}" ${requiredAttr}></textarea>`;
             break;
         case 'select':
-            inputHTML = `<select class="form-select" id="${campo.name}" name="${campo.name}" ${requiredAttr}><option value="">${campo.placeholder || 'Seleccione una opción'}</option></select>`;
+            if (campo.opciones) {
+                // Select con opciones estáticas
+                const opcionesHTML = campo.opciones.map(op => 
+                    `<option value="${op.value}">${op.text}</option>`
+                ).join('');
+                inputHTML = `<select class="form-select" id="${campo.name}" name="${campo.name}" ${requiredAttr}><option value="">${campo.placeholder || 'Seleccione una opción'}</option>${opcionesHTML}</select>`;
+            } else {
+                // Select que necesita cargar datos desde API
+                inputHTML = `<select class="form-select" id="${campo.name}" name="${campo.name}" ${requiredAttr}><option value="">${campo.placeholder || 'Seleccione una opción'}</option></select>`;
+            }
             break;
         case 'subform':
-            inputHTML = `<div class="border rounded p-3 bg-light"><div id="${campo.name}-container"></div><button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="agregarAnimal('${campo.name}')"><i class="bi bi-plus"></i> Agregar Animal</button></div>`;
+            if (campo.name === 'medicamentos') {
+                inputHTML = `<div class="border rounded p-3 bg-light"><div id="${campo.name}-container"></div><button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="agregarMedicamento('${campo.name}')"><i class="bi bi-plus"></i> Agregar Medicamento</button></div>`;
+            } else {
+                inputHTML = `<div class="border rounded p-3 bg-light"><div id="${campo.name}-container"></div><button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="agregarAnimal('${campo.name}')"><i class="bi bi-plus"></i> Agregar Animal</button></div>`;
+            }
             break;
     }
     
@@ -126,7 +188,37 @@ async function configurarEventListeners() {
             await cargarOpcionesSelect(campo);
         }
     }
+    
+    // Agregar listener para el campo estado (mostrar/ocultar medicamentos)
+    const estadoSelect = document.getElementById('estado');
+    if (estadoSelect) {
+        estadoSelect.addEventListener('change', toggleMedicamentos);
+        // Ejecutar al cargar para estado inicial
+        toggleMedicamentos();
+    }
+    
     document.getElementById('dynamic-form').addEventListener('submit', manejarEnvio);
+}
+
+// Mostrar/ocultar sección de medicamentos según el estado
+function toggleMedicamentos() {
+    const estadoSelect = document.getElementById('estado');
+    const medicamentosContainer = document.getElementById('medicamentos-container');
+    const medicamentosLabel = medicamentosContainer?.closest('.col-12').querySelector('label');
+    
+    if (estadoSelect && medicamentosContainer) {
+        const esSaludable = estadoSelect.value === 'Saludable';
+        
+        if (esSaludable) {
+            medicamentosContainer.style.display = 'none';
+            if (medicamentosLabel) medicamentosLabel.style.display = 'none';
+            // Limpiar medicamentos existentes
+            medicamentosContainer.innerHTML = '';
+        } else {
+            medicamentosContainer.style.display = 'block';
+            if (medicamentosLabel) medicamentosLabel.style.display = 'block';
+        }
+    }
 }
 
 async function cargarOpcionesSelect(campo) {
@@ -146,6 +238,9 @@ async function cargarOpcionesSelect(campo) {
                 } else if (campo.endpoint.includes('especies')) {
                     option.value = item.ID_ESPECIE;
                     option.textContent = item.NOMBRE_CIENTIFICO;
+                } else if (campo.endpoint.includes('medicamentos')) {
+                    option.value = item.ID_MEDICAMENTO;
+                    option.textContent = `${item.NOMBRE_MEDICAMENTO} (${item.TIPO_MEDICAMENTO})`;
                 }
                 select.appendChild(option);
             });
@@ -212,10 +307,14 @@ async function manejarEnvio(event) {
     
     const datos = obtenerDatosFormulario();
     
+    // TEMPORAL: Debug - ver qué datos se están enviando
+    console.log('Datos que se envían:', datos);
+    
     // Para tratamientos, agregar id_animal desde URL
-    if (configuracionActual.titulo === 'Tratamiento') {
+    if (configuracionActual.titulo === 'Evaluación Veterinaria') {
         const params = obtenerParametrosURL();
         datos.id_animal = params.id_animal;
+        console.log('ID Animal agregado:', params.id_animal);
     }
     
     try {
@@ -224,6 +323,8 @@ async function manejarEnvio(event) {
         const url = modoActual === 'crear' ? configuracionActual.endpoint : `${configuracionActual.endpoint}/${idActual}`;
         const method = modoActual === 'crear' ? 'POST' : 'PUT';
         
+        console.log('URL:', url, 'Method:', method); // TEMPORAL: Debug
+        
         const response = await fetch(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
@@ -231,6 +332,7 @@ async function manejarEnvio(event) {
         });
         
         const result = await response.json();
+        console.log('Respuesta del servidor:', result); // TEMPORAL: Debug
         
         if (result.success) {
             const mensaje = modoActual === 'crear' ? `${configuracionActual.titulo} creado exitosamente` : `${configuracionActual.titulo} actualizado exitosamente`;
@@ -263,7 +365,11 @@ function obtenerDatosFormulario() {
     
     configuracionActual.campos.forEach(campo => {
         if (campo.type === 'subform') {
-            datos[campo.name] = obtenerDatosAnimales();
+            if (campo.name === 'medicamentos') {
+                datos[campo.name] = obtenerDatosMedicamentos();
+            } else {
+                datos[campo.name] = obtenerDatosAnimales();
+            }
         } else {
             const elemento = document.getElementById(campo.name);
             if (elemento) {
@@ -534,4 +640,105 @@ function volver() {
     if (confirm('¿Estás seguro de que deseas salir? Los cambios no guardados se perderán.')) {
         window.location.href = configuracionActual.dashboardUrl;
     }
+}
+
+// ========== FUNCIONES DE MEDICAMENTOS ==========
+function agregarMedicamento(nombreCampo) {
+    const container = document.getElementById(`${nombreCampo}-container`);
+    const configCampo = encontrarConfiguracionCampo(nombreCampo);
+    if (!configCampo) return;
+    
+    const numeroMedicamento = container.children.length + 1;
+    const medicamentoDiv = document.createElement('div');
+    medicamentoDiv.className = 'card mb-3';
+    medicamentoDiv.id = `medicamento-${numeroMedicamento}`;
+    
+    let camposHTML = '';
+    configCampo.campos.forEach(campo => {
+        const campoId = `medicamento_${numeroMedicamento}_${campo.name}`;
+        const requiredAttr = campo.required ? 'required' : '';
+        let inputHTML = '';
+        
+        if (campo.type === 'select') {
+            inputHTML = `<select class="form-select" id="${campoId}" name="${campoId}" ${requiredAttr}><option value="">Cargando...</option></select>`;
+        } else if (campo.type === 'date') {
+            inputHTML = `<input type="date" class="form-control" id="${campoId}" name="${campoId}" ${requiredAttr}>`;
+        } else {
+            inputHTML = `<input type="text" class="form-control" id="${campoId}" name="${campoId}" placeholder="${campo.placeholder || ''}" ${requiredAttr}>`;
+        }
+        
+        camposHTML += `<div class="col-md-6 mb-2"><label class="form-label">${campo.label}</label>${inputHTML}</div>`;
+    });
+    
+    medicamentoDiv.innerHTML = `
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Medicamento #${numeroMedicamento}</h6>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarMedicamento(${numeroMedicamento})">Eliminar</button>
+        </div>
+        <div class="card-body"><div class="row">${camposHTML}</div></div>
+    `;
+    
+    container.appendChild(medicamentoDiv);
+    cargarDatosSelectsMedicamento(numeroMedicamento, configCampo.campos);
+}
+
+async function cargarDatosSelectsMedicamento(numeroMedicamento, campos) {
+    for (const campo of campos) {
+        if (campo.type === 'select' && campo.endpoint) {
+            try {
+                const response = await fetch(campo.endpoint);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const select = document.getElementById(`medicamento_${numeroMedicamento}_${campo.name}`);
+                    select.innerHTML = '<option value="">Seleccione...</option>';
+                    
+                    result.data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.ID_MEDICAMENTO;
+                        option.textContent = `${item.NOMBRE_MEDICAMENTO} (${item.TIPO_MEDICAMENTO})`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error(`Error cargando datos para ${campo.name}:`, error);
+            }
+        }
+    }
+}
+
+function obtenerDatosMedicamentos() {
+    const medicamentos = [];
+    const container = document.getElementById('medicamentos-container');
+    const cardsMedicamentos = container.querySelectorAll('.card');
+    
+    cardsMedicamentos.forEach((card, index) => {
+        const numeroMedicamento = index + 1;
+        const medicamento = {};
+        const configCampo = encontrarConfiguracionCampo('medicamentos');
+        if (!configCampo) return;
+        
+        configCampo.campos.forEach(campo => {
+            const campoId = `medicamento_${numeroMedicamento}_${campo.name}`;
+            const elemento = document.getElementById(campoId);
+            
+            if (elemento) {
+                const valor = elemento.value.trim();
+                if (valor || !campo.required) {
+                    medicamento[campo.name] = valor || null;
+                }
+            }
+        });
+        
+        if (medicamento.id_medicamento && medicamento.dosis) {
+            medicamentos.push(medicamento);
+        }
+    });
+    
+    return medicamentos;
+}
+
+function eliminarMedicamento(numeroMedicamento) {
+    const medicamentoDiv = document.getElementById(`medicamento-${numeroMedicamento}`);
+    if (medicamentoDiv) medicamentoDiv.remove();
 }
