@@ -241,11 +241,16 @@ const VeterinarioController = {
         }
     },
 
-    // Actualizar tratamiento
+    // Actualizar tratamiento 
     updateTratamiento: async (req, res) => {
         try {
             const { id } = req.params;
-            const { descripcion_tratamiento, observaciones_cuidado, estado_tratamiento } = req.body;
+            const { 
+                descripcion_tratamiento, 
+                observaciones_cuidado, 
+                estado_tratamiento,
+                medicamentos  
+            } = req.body;
             
             if (!validateId(id)) {
                 return sendError(res, 'ID de tratamiento inválido');
@@ -256,13 +261,13 @@ const VeterinarioController = {
                 return sendError(res, 'Solo los veterinarios pueden actualizar tratamientos', 403);
             }
             
-            // Verificar existencia
+            // Verificar existencia del tratamiento
             const tratamientoExists = await Tratamiento.exists(id);
             if (!tratamientoExists) {
                 return sendError(res, 'El tratamiento especificado no existe', 404);
             }
             
-            // Actualizar
+            // 1. Actualizar datos básicos del tratamiento
             const actualizado = await Tratamiento.update(id, {
                 descripcion_tratamiento,
                 observaciones_cuidado,
@@ -273,12 +278,56 @@ const VeterinarioController = {
                 return sendError(res, 'No se pudo actualizar el tratamiento', 500);
             }
             
+            // 2. Manejar medicamentos si se proporcionaron
+            let medicamentosActualizados = [];
+            if (medicamentos && Array.isArray(medicamentos)) {
+                
+                // 2.1 Eliminar medicamentos existentes del tratamiento
+                await executeNonQuery(
+                    'DELETE FROM Tratamiento_Medicamentos WHERE id_tratamiento = :1',
+                    [id]
+                );
+                
+                // 2.2 Agregar nuevos medicamentos
+                for (const medicamento of medicamentos) {
+                    const { id_medicamento, dosis, fecha_inicio_medicamento, fecha_fin_medicamento } = medicamento;
+                    
+                    // Validar que tenga los campos obligatorios
+                    if (id_medicamento && dosis && fecha_inicio_medicamento) {
+                        
+                        const insertMedicamentoQuery = `
+                            INSERT INTO Tratamiento_Medicamentos 
+                            (id_tratamiento, id_medicamento, dosis, fecha_inicio_medicamento, fecha_fin_medicamento)
+                            VALUES (:1, :2, :3, TO_DATE(:4, 'YYYY-MM-DD'), 
+                                    ${fecha_fin_medicamento ? "TO_DATE(:5, 'YYYY-MM-DD')" : 'NULL'})
+                        `;
+                        
+                        const params = [id, id_medicamento, dosis, fecha_inicio_medicamento];
+                        if (fecha_fin_medicamento) {
+                            params.push(fecha_fin_medicamento);
+                        }
+                        
+                        await executeNonQuery(insertMedicamentoQuery, params);
+                        
+                        medicamentosActualizados.push({
+                            id_medicamento,
+                            dosis,
+                            fecha_inicio_medicamento,
+                            fecha_fin_medicamento
+                        });
+                    }
+                }
+            }
+            
+            // 3. Respuesta exitosa con información completa
             sendSuccess(res, {
                 id_tratamiento: parseInt(id),
                 descripcion_tratamiento,
                 observaciones_cuidado,
-                estado_tratamiento
-            }, 'Tratamiento actualizado exitosamente');
+                estado_tratamiento,
+                medicamentos_actualizados: medicamentosActualizados,
+                total_medicamentos: medicamentosActualizados.length
+            }, 'Tratamiento y medicamentos actualizados exitosamente');
             
         } catch (error) {
             handleError(res, error, 'Error al actualizar tratamiento');

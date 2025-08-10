@@ -165,7 +165,7 @@ app.put('/api/veterinario/tratamientos/:id', requireAuth, VeterinarioController.
 // Ruta para completar tratamiento
 app.put('/api/veterinario/completar/:id', requireAuth, VeterinarioController.completarTratamiento);
 
-// Ruta para obtener información completa del animal (NUEVA)
+// Ruta para obtener información completa del animal 
 app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
@@ -190,14 +190,24 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
             INNER JOIN Especies esp ON a.id_especie = esp.id_especie
             WHERE a.id_animal = :1
         `;
-        const animal = await executeQuery(animalQuery, [id]);
+        const animalResult = await executeQuery(animalQuery, [id]);
         
-        if (animal.length === 0) {
+        if (animalResult.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Animal no encontrado'
             });
         }
+        
+        // Normalizar datos del animal (que no afecten las mayusculas)
+        const animal = {
+            id_animal: animalResult[0].ID_ANIMAL,
+            nombre: animalResult[0].NOMBRE,
+            raza: animalResult[0].RAZA,
+            edad: animalResult[0].EDAD,
+            sexo: animalResult[0].SEXO,
+            especie_nombre: animalResult[0].ESPECIE_NOMBRE
+        };
         
         // Obtener información del rescate
         const rescateQuery = `
@@ -211,9 +221,17 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
             INNER JOIN Empleados e ON r.id_rescatista = e.id_empleado
             WHERE a.id_animal = :1
         `;
-        const rescate = await executeQuery(rescateQuery, [id]);
+        const rescateResult = await executeQuery(rescateQuery, [id]);
         
-        // Obtener último estado de salud - CORREGIDO
+        // Normalizar datos del rescate
+        const rescate = rescateResult.length > 0 ? {
+            fecha_rescate: rescateResult[0].FECHA_RESCATE,
+            lugar: rescateResult[0].LUGAR,
+            detalles: rescateResult[0].DETALLES,
+            nombre_rescatista: rescateResult[0].NOMBRE_RESCATISTA
+        } : {};
+        
+        // Obtener último estado de salud
         const estadoSaludQuery = `
             SELECT 
                 TO_CHAR(es.fecha_evaluacion, 'YYYY-MM-DD') as fecha_evaluacion,
@@ -226,7 +244,16 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
             WHERE es.id_animal = :1
             AND es.fecha_evaluacion = (SELECT MAX(fecha_evaluacion) FROM Estados_Salud WHERE id_animal = :2)
         `;
-        const estadoSalud = await executeQuery(estadoSaludQuery, [id, id]);
+        const estadoSaludResult = await executeQuery(estadoSaludQuery, [id, id]);
+        
+        // Normalizar datos del estado de salud
+        const estadoSalud = estadoSaludResult.length > 0 ? {
+            fecha_evaluacion: estadoSaludResult[0].FECHA_EVALUACION,
+            tipo_problema: estadoSaludResult[0].TIPO_PROBLEMA,
+            diagnostico: estadoSaludResult[0].DIAGNOSTICO,
+            estado: estadoSaludResult[0].ESTADO,
+            nombre_veterinario: estadoSaludResult[0].NOMBRE_VETERINARIO
+        } : {};
         
         // Obtener tratamiento actual
         const tratamientoQuery = `
@@ -239,7 +266,15 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
             WHERE t.id_animal = :1
             AND t.estado_tratamiento = 'EN_TRATAMIENTO'
         `;
-        const tratamiento = await executeQuery(tratamientoQuery, [id]);
+        const tratamientoResult = await executeQuery(tratamientoQuery, [id]);
+        
+        // Normalizar datos del tratamiento
+        const tratamiento = tratamientoResult.length > 0 ? {
+            fecha_inicio: tratamientoResult[0].FECHA_INICIO,
+            descripcion_tratamiento: tratamientoResult[0].DESCRIPCION_TRATAMIENTO,
+            observaciones_cuidado: tratamientoResult[0].OBSERVACIONES_CUIDADO,
+            estado_tratamiento: tratamientoResult[0].ESTADO_TRATAMIENTO
+        } : {};
         
         // Obtener medicamentos
         const medicamentosQuery = `
@@ -256,15 +291,24 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
             AND t.estado_tratamiento = 'EN_TRATAMIENTO'
             ORDER BY tm.fecha_inicio_medicamento DESC
         `;
-        const medicamentos = await executeQuery(medicamentosQuery, [id]);
+        const medicamentosResult = await executeQuery(medicamentosQuery, [id]);
+        
+        // Normalizar datos de medicamentos
+        const medicamentos = medicamentosResult.map(med => ({
+            nombre_medicamento: med.NOMBRE_MEDICAMENTO,
+            tipo_medicamento: med.TIPO_MEDICAMENTO,
+            dosis: med.DOSIS,
+            fecha_inicio_medicamento: med.FECHA_INICIO_MEDICAMENTO,
+            fecha_fin_medicamento: med.FECHA_FIN_MEDICAMENTO
+        }));
         
         res.json({
             success: true,
             data: {
-                animal: animal[0],
-                rescate: rescate[0] || {},
-                estadoSalud: estadoSalud[0] || {},
-                tratamiento: tratamiento[0] || {},
+                animal: animal,
+                rescate: rescate,
+                estadoSalud: estadoSalud,
+                tratamiento: tratamiento,
                 medicamentos: medicamentos
             },
             message: 'Información completa obtenida exitosamente'
