@@ -199,7 +199,7 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
             });
         }
         
-        // Normalizar datos del animal (que no afecten las mayusculas)
+        // Normalizar datos del animal
         const animal = {
             id_animal: animalResult[0].ID_ANIMAL,
             nombre: animalResult[0].NOMBRE,
@@ -255,28 +255,32 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
             nombre_veterinario: estadoSaludResult[0].NOMBRE_VETERINARIO
         } : {};
         
-        // Obtener tratamiento actual
+        // Obtener tratamiento más reciente (EN_TRATAMIENTO o COMPLETADO)
         const tratamientoQuery = `
             SELECT 
                 TO_CHAR(t.fecha_inicio, 'YYYY-MM-DD') as fecha_inicio,
+                TO_CHAR(t.fecha_fin, 'YYYY-MM-DD') as fecha_fin,
                 t.descripcion_tratamiento,
                 t.observaciones_cuidado,
                 t.estado_tratamiento
             FROM Tratamientos t
             WHERE t.id_animal = :1
-            AND t.estado_tratamiento = 'EN_TRATAMIENTO'
+            AND t.estado_tratamiento IN ('EN_TRATAMIENTO', 'COMPLETADO')
+            ORDER BY t.fecha_inicio DESC
+            FETCH FIRST 1 ROWS ONLY
         `;
         const tratamientoResult = await executeQuery(tratamientoQuery, [id]);
         
         // Normalizar datos del tratamiento
         const tratamiento = tratamientoResult.length > 0 ? {
             fecha_inicio: tratamientoResult[0].FECHA_INICIO,
+            fecha_fin: tratamientoResult[0].FECHA_FIN,
             descripcion_tratamiento: tratamientoResult[0].DESCRIPCION_TRATAMIENTO,
             observaciones_cuidado: tratamientoResult[0].OBSERVACIONES_CUIDADO,
             estado_tratamiento: tratamientoResult[0].ESTADO_TRATAMIENTO
         } : {};
         
-        // Obtener medicamentos
+        // Obtener medicamentos del tratamiento más reciente
         const medicamentosQuery = `
             SELECT 
                 m.nombre_medicamento,
@@ -288,8 +292,8 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
             INNER JOIN Medicamentos m ON tm.id_medicamento = m.id_medicamento
             INNER JOIN Tratamientos t ON tm.id_tratamiento = t.id_tratamiento
             WHERE t.id_animal = :1
-            AND t.estado_tratamiento = 'EN_TRATAMIENTO'
-            ORDER BY tm.fecha_inicio_medicamento DESC
+            AND t.estado_tratamiento IN ('EN_TRATAMIENTO', 'COMPLETADO')
+            ORDER BY t.fecha_inicio DESC, tm.fecha_inicio_medicamento DESC
         `;
         const medicamentosResult = await executeQuery(medicamentosQuery, [id]);
         

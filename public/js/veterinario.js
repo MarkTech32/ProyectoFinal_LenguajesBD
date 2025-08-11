@@ -99,8 +99,8 @@ function mostrarAnimalesListos(animales) {
                 <button type="button" class="btn btn-sm btn-success me-1" onclick="asignarCuidador(${animal.ID_ANIMAL})">
                     <i class="bi bi-person-plus"></i> Asignar
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="verHistorial(${animal.ID_ANIMAL})">
-                    <i class="bi bi-clock-history"></i> Historial
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="verDetalleCompleto(${animal.ID_ANIMAL})">
+                    <i class="bi bi-eye"></i> Ver
                 </button>
             </td>
         </tr>
@@ -144,11 +144,6 @@ async function completarTratamiento(idTratamiento) {
 function asignarCuidador(idAnimal) {
     console.log(`TODO: Asignar cuidador al animal ID: ${idAnimal}`);
     // TODO: Implementar formulario o modal
-}
-
-function verHistorial(idAnimal) {
-    console.log(`TODO: Ver historial del animal ID: ${idAnimal}`);
-    // TODO: Implementar página de historial
 }
 
 // ========== FUNCIÓN PARA VER DETALLE COMPLETO ==========
