@@ -1,9 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const session = require('express-session'); // Necesitarás instalar: npm install express-session
+const session = require('express-session'); 
 const { executeQuery } = require('./config/database');
 const RescatistaController = require('./controllers/RescatistaController');
 const VeterinarioController = require('./controllers/VeterinarioController');
+const CuidadorController = require('./controllers/CuidadorController');
 
 const app = express();
 const PORT = 3000;
@@ -65,6 +66,11 @@ app.get('/dashboard_rescatista', requireAuth, (req, res) => {
 // Dashboard de veterinarios - CON PROTECCIÓN
 app.get('/dashboard_veterinario', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/views/dashboard_veterinario.html');
+});
+
+// Dashboard de cuidadores - CON PROTECCIÓN
+app.get('/dashboard_cuidador', requireAuth, (req, res) => {
+    res.sendFile(__dirname + '/views/dashboard_cuidador.html');
 });
 
 // Formulario - CON PROTECCIÓN
@@ -509,6 +515,46 @@ app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) =>
     }
 });
 
+// Dashboard de cuidadores - CON PROTECCIÓN
+app.get('/dashboard_cuidador', requireAuth, (req, res) => {
+    res.sendFile(__dirname + '/views/dashboard_cuidador.html');
+});
+
+// ======= RUTAS API - CUIDADORES (CON PROTECCIÓN) =======
+// Agregar después de las rutas de veterinarios
+
+// Rutas para el dashboard de cuidadores
+app.get('/api/cuidador/animales-en-cuidado', requireAuth, CuidadorController.getAnimalesEnCuidado);
+app.get('/api/cuidador/historial-observaciones/:id', requireAuth, CuidadorController.getHistorialObservaciones);
+app.post('/api/cuidador/observaciones', requireAuth, CuidadorController.agregarObservacion);
+
+// Ruta para verificar si el usuario actual es cuidador
+app.get('/api/cuidador/verificar-rol', requireAuth, async (req, res) => {
+    try {
+        const idUsuario = req.session.user.id;
+        
+        const result = await executeQuery(
+            'SELECT id_rol FROM Empleados_Roles WHERE id_empleado = :1 AND id_rol = 3',
+            [idUsuario]
+        );
+        
+        res.json({
+            success: true,
+            data: {
+                es_cuidador: result.length > 0,
+                id_usuario: idUsuario
+            },
+            message: 'Verificación de rol completada'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error verificando rol',
+            error: error.message
+        });
+    }
+});
+
 // ======= INICIAR SERVIDOR =======
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en: http://localhost:${PORT}`);
@@ -518,6 +564,7 @@ app.listen(PORT, () => {
     console.log('  • http://localhost:3000/index (centro de refugio)');
     console.log('  • http://localhost:3000/dashboard_rescatista');
     console.log('  • http://localhost:3000/dashboard_veterinario');
+    console.log('  • http://localhost:3000/dashboard_cuidador');
     console.log('  • http://localhost:3000/logout (cerrar sesión)');
     console.log('Presiona Ctrl+C para detener el servidor');
 });
