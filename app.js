@@ -151,6 +151,187 @@ app.get('/api/medicamentos', requireAuth, async (req, res) => {
     }
 });
 
+// Agregar en app.js después de la ruta de medicamentos
+
+// ======= RUTA API - CUIDADORES =======
+app.get('/api/cuidadores', requireAuth, async (req, res) => {
+    try {
+        const cuidadoresQuery = `
+            SELECT 
+                e.id_empleado,
+                e.nombre,
+                e.apellidos,
+                e.nombre || ' ' || e.apellidos as nombre_completo
+            FROM Empleados e
+            INNER JOIN Empleados_Roles er ON e.id_empleado = er.id_empleado
+            WHERE er.id_rol = 3
+            ORDER BY e.nombre, e.apellidos
+        `;
+        
+        const cuidadores = await executeQuery(cuidadoresQuery);
+        
+        res.json({
+            success: true,
+            data: cuidadores,
+            message: 'Cuidadores obtenidos exitosamente'
+        });
+    } catch (error) {
+        console.error('Error al obtener cuidadores:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    }
+});
+
+
+// ======= RUTA API - ASIGNAR CUIDADOR =======
+app.put('/api/veterinario/asignar-cuidador/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params; // ID del tratamiento
+        const { id_cuidador } = req.body;
+        
+        if (!id || isNaN(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de tratamiento inválido'
+            });
+        }
+        
+        if (!id_cuidador || isNaN(id_cuidador)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de cuidador inválido'
+            });
+        }
+        
+        // Verificar que el tratamiento existe y está completado
+        const tratamientoQuery = `
+            SELECT id_tratamiento, estado_tratamiento, id_cuidador 
+            FROM Tratamientos 
+            WHERE id_tratamiento = :1
+        `;
+        const tratamiento = await executeQuery(tratamientoQuery, [id]);
+        
+        if (tratamiento.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Tratamiento no encontrado'
+            });
+        }
+        
+        if (tratamiento[0].ESTADO_TRATAMIENTO !== 'COMPLETADO') {
+            return res.status(400).json({
+                success: false,
+                message: 'Solo se pueden asignar tratamientos completados'
+            });
+        }
+        
+        // Verificar que el cuidador existe y tiene el rol correcto
+        const cuidadorQuery = `
+            SELECT e.id_empleado, e.nombre || ' ' || e.apellidos as nombre_completo
+            FROM Empleados e
+            INNER JOIN Empleados_Roles er ON e.id_empleado = er.id_empleado
+            WHERE e.id_empleado = :1 AND er.id_rol = 3
+        `;
+        const cuidador = await executeQuery(cuidadorQuery, [id_cuidador]);
+        
+        if (cuidador.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cuidador no válido'
+            });
+        }
+        
+        // Asignar cuidador al tratamiento
+        const updateQuery = `
+            UPDATE Tratamientos 
+            SET id_cuidador = :1 
+            WHERE id_tratamiento = :2
+        `;
+        
+        const { executeNonQuery } = require('./config/database');
+        await executeNonQuery(updateQuery, [id_cuidador, id]);
+        
+        res.json({
+            success: true,
+            data: {
+                id_tratamiento: parseInt(id),
+                id_cuidador: parseInt(id_cuidador),
+                nombre_cuidador: cuidador[0].NOMBRE_COMPLETO
+            },
+            message: 'Cuidador asignado exitosamente'
+        });
+        
+    } catch (error) {
+        console.error('Error al asignar cuidador:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    }
+});
+
+// Agregar en app.js después del endpoint de asignar cuidador
+
+// ======= RUTA API - OBTENER TRATAMIENTO POR ANIMAL =======
+app.get('/api/veterinario/tratamiento-por-animal/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params; // ID del animal
+        
+        if (!id || isNaN(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de animal inválido'
+            });
+        }
+        
+        // Buscar el tratamiento más reciente del animal que esté completado
+        const tratamientoQuery = `
+            SELECT 
+                id_tratamiento,
+                id_animal,
+                estado_tratamiento,
+                id_cuidador
+            FROM Tratamientos 
+            WHERE id_animal = :1 
+            AND estado_tratamiento = 'COMPLETADO'
+            ORDER BY fecha_inicio DESC
+            FETCH FIRST 1 ROWS ONLY
+        `;
+        
+        const tratamiento = await executeQuery(tratamientoQuery, [id]);
+        
+        if (tratamiento.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No se encontró tratamiento completado para este animal'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: {
+                id_tratamiento: tratamiento[0].ID_TRATAMIENTO,
+                id_animal: tratamiento[0].ID_ANIMAL,
+                estado_tratamiento: tratamiento[0].ESTADO_TRATAMIENTO,
+                id_cuidador: tratamiento[0].ID_CUIDADOR
+            },
+            message: 'Tratamiento obtenido exitosamente'
+        });
+        
+    } catch (error) {
+        console.error('Error al obtener tratamiento por animal:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    }
+});
+
 // ======= RUTAS API - VETERINARIOS (CON PROTECCIÓN) =======
 // Rutas para el dashboard de veterinarios (3 categorías)
 app.get('/api/veterinario/pendientes', requireAuth, VeterinarioController.getAnimalesPendientes);

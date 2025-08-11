@@ -69,10 +69,32 @@ const VeterinarioController = {
         }
     },
 
-    // Obtener animales listos para cuidadores
+    // Obtener animales listos para cuidadores (ACTUALIZADA)
     getAnimalesListos: async (req, res) => {
         try {
-            const animales = await Tratamiento.getAnimalesListos();
+            const query = `
+                SELECT 
+                    a.id_animal,
+                    a.nombre as nombre_animal,
+                    esp.nombre_cientifico,
+                    t.descripcion_tratamiento as diagnostico_final,
+                    TO_CHAR(t.fecha_fin, 'YYYY-MM-DD') as fecha_fin_tratamiento,
+                    ev.nombre || ' ' || ev.apellidos as nombre_veterinario,
+                    t.observaciones_cuidado as observaciones,
+                    t.estado_tratamiento,
+                    t.id_cuidador,
+                    ec.nombre || ' ' || ec.apellidos as nombre_cuidador
+                FROM Tratamientos t
+                INNER JOIN Animales a ON t.id_animal = a.id_animal
+                INNER JOIN Especies esp ON a.id_especie = esp.id_especie
+                LEFT JOIN Empleados ev ON t.id_veterinario = ev.id_empleado
+                LEFT JOIN Empleados ec ON t.id_cuidador = ec.id_empleado
+                WHERE t.estado_tratamiento = 'COMPLETADO'
+                AND t.fecha_fin IS NOT NULL
+                ORDER BY t.fecha_fin DESC
+            `;
+            
+            const animales = await executeQuery(query);
             sendSuccess(res, animales, 'Animales listos para cuidadores obtenidos exitosamente');
         } catch (error) {
             handleError(res, error, 'Error al obtener animales listos');

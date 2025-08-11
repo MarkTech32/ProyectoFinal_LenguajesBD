@@ -85,26 +85,49 @@ function mostrarAnimalesEnTratamiento(tratamientos) {
 
 function mostrarAnimalesListos(animales) {
     const tbody = document.getElementById('tabla-listos');
-    tbody.innerHTML = animales.map(animal => `
-        <tr>
-            <td>${animal.ID_ANIMAL}</td>
-            <td><strong>${animal.NOMBRE_ANIMAL}</strong></td>
-            <td><small>${animal.NOMBRE_CIENTIFICO}</small></td>
-            <td><small>${animal.DIAGNOSTICO_FINAL || 'Sin diagnóstico'}</small></td>
-            <td>${animal.FECHA_FIN_TRATAMIENTO}</td>
-            <td><small>${animal.NOMBRE_VETERINARIO}</small></td>
-            <td><small>${animal.OBSERVACIONES || 'Sin observaciones'}</small></td>
-            <td><span class="badge bg-success">Completado</span></td>
-            <td>
-                <button type="button" class="btn btn-sm btn-success me-1" onclick="asignarCuidador(${animal.ID_ANIMAL})">
+    tbody.innerHTML = animales.map(animal => {
+        // Determinar estado de asignación
+        let estadoAsignacion = '';
+        let botonesAccion = '';
+        
+        if (animal.ID_CUIDADOR) {
+            // Animal ya asignado
+            estadoAsignacion = `<span class="badge bg-info">Asignado a: ${animal.NOMBRE_CUIDADOR || 'Cuidador ID: ' + animal.ID_CUIDADOR}</span>`;
+            botonesAccion = `
+                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="verDetalleCompleto(${animal.ID_ANIMAL})">
+                    <i class="bi bi-eye"></i> Ver
+                </button>
+                <small class="text-muted">En cuidado</small>
+            `;
+        } else {
+            // Animal disponible para asignar
+            estadoAsignacion = `<span class="badge bg-warning text-dark">Disponible</span>`;
+            botonesAccion = `
+                <button type="button" class="btn btn-sm btn-success me-1" onclick="mostrarModalAsignarCuidador(${animal.ID_ANIMAL}, '${animal.NOMBRE_ANIMAL}')">
                     <i class="bi bi-person-plus"></i> Asignar
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="verDetalleCompleto(${animal.ID_ANIMAL})">
                     <i class="bi bi-eye"></i> Ver
                 </button>
-            </td>
-        </tr>
-    `).join('');
+            `;
+        }
+        
+        return `
+            <tr>
+                <td>${animal.ID_ANIMAL}</td>
+                <td><strong>${animal.NOMBRE_ANIMAL}</strong></td>
+                <td><small>${animal.NOMBRE_CIENTIFICO}</small></td>
+                <td><small>${animal.DIAGNOSTICO_FINAL || 'Sin diagnóstico'}</small></td>
+                <td>${animal.FECHA_FIN_TRATAMIENTO}</td>
+                <td><small>${animal.NOMBRE_VETERINARIO}</small></td>
+                <td><small>${animal.OBSERVACIONES || 'Sin observaciones'}</small></td>
+                <td>${estadoAsignacion}</td>
+                <td>
+                    ${botonesAccion}
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // ========== ACCIONES PRINCIPALES ==========
@@ -140,10 +163,162 @@ async function completarTratamiento(idTratamiento) {
     }
 }
 
-// ========== ACCIONES PENDIENTES (PLACEHOLDER) ==========
-function asignarCuidador(idAnimal) {
-    console.log(`TODO: Asignar cuidador al animal ID: ${idAnimal}`);
-    // TODO: Implementar formulario o modal
+// Agregar en veterinario.js - Función para mostrar modal de asignación
+async function mostrarModalAsignarCuidador(idAnimal, nombreAnimal) {
+    try {
+        // Cargar lista de cuidadores
+        const response = await fetch('/api/cuidadores');
+        const result = await response.json();
+        
+        if (!result.success) {
+            mostrarMensaje('Error al cargar cuidadores', 'error');
+            return;
+        }
+        
+        const cuidadores = result.data;
+        
+        // Crear opciones del select
+        const opcionesCuidadores = cuidadores.map(cuidador => 
+            `<option value="${cuidador.ID_EMPLEADO}">${cuidador.NOMBRE_COMPLETO}</option>`
+        ).join('');
+        
+        // Crear HTML del modal
+        const modalHTML = `
+            <div class="modal fade" id="modalAsignarCuidador" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-person-plus"></i> Asignar Cuidador
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Animal:</strong></label>
+                                <p class="text-muted">${nombreAnimal} (ID: ${idAnimal})</p>
+                            </div>
+                            <div class="mb-3">
+                                <label for="selectCuidador" class="form-label">Seleccionar Cuidador <span class="text-danger">*</span></label>
+                                <select class="form-select" id="selectCuidador" required>
+                                    <option value="">Seleccione un cuidador...</option>
+                                    ${opcionesCuidadores}
+                                </select>
+                            </div>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                Una vez asignado, el cuidador podrá gestionar este animal desde su dashboard.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Cancelar
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="confirmarAsignacionCuidador(${idAnimal}, '${nombreAnimal}')">
+                                <i class="bi bi-check-circle"></i> Asignar Cuidador
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remover modal existente si existe
+        const modalExistente = document.getElementById('modalAsignarCuidador');
+        if (modalExistente) {
+            modalExistente.remove();
+        }
+        
+        // Agregar modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalAsignarCuidador'));
+        modal.show();
+        
+        // Limpiar modal del DOM cuando se cierre
+        document.getElementById('modalAsignarCuidador').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+        
+    } catch (error) {
+        console.error('Error cargando modal de asignación:', error);
+        mostrarMensaje('Error de conexión', 'error');
+    }
+}
+
+// Agregar en veterinario.js - Función para confirmar asignación
+
+async function confirmarAsignacionCuidador(idAnimal, nombreAnimal) {
+    try {
+        const selectCuidador = document.getElementById('selectCuidador');
+        const idCuidador = selectCuidador.value;
+        
+        if (!idCuidador) {
+            mostrarMensaje('Debe seleccionar un cuidador', 'error');
+            return;
+        }
+        
+        // Obtener nombre del cuidador seleccionado
+        const nombreCuidador = selectCuidador.options[selectCuidador.selectedIndex].text;
+        
+        // Buscar el ID del tratamiento del animal
+        const tratamientoId = await obtenerIdTratamientoPorAnimal(idAnimal);
+        
+        if (!tratamientoId) {
+            mostrarMensaje('No se encontró el tratamiento del animal', 'error');
+            return;
+        }
+        
+        // Realizar la asignación
+        const response = await fetch(`/api/veterinario/asignar-cuidador/${tratamientoId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id_cuidador: parseInt(idCuidador)
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalAsignarCuidador'));
+            modal.hide();
+            
+            // Mostrar mensaje de éxito
+            mostrarMensaje(`${nombreAnimal} asignado exitosamente a ${nombreCuidador}`, 'success');
+            
+            // Recargar tabla de animales listos
+            cargarTabla('/api/veterinario/listos', 'tabla-listos', mostrarAnimalesListos, 9);
+            
+        } else {
+            mostrarMensaje(result.message || 'Error al asignar cuidador', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error confirmando asignación:', error);
+        mostrarMensaje('Error de conexión', 'error');
+    }
+}
+
+// Función auxiliar para obtener ID de tratamiento por ID de animal
+async function obtenerIdTratamientoPorAnimal(idAnimal) {
+    try {
+        const response = await fetch(`/api/veterinario/tratamiento-por-animal/${idAnimal}`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            return result.data.id_tratamiento;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Error obteniendo ID de tratamiento:', error);
+        return null;
+    }
 }
 
 // ========== FUNCIÓN PARA VER DETALLE COMPLETO ==========
