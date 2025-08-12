@@ -5,6 +5,7 @@ const { executeQuery } = require('./config/database');
 const RescatistaController = require('./controllers/RescatistaController');
 const VeterinarioController = require('./controllers/VeterinarioController');
 const CuidadorController = require('./controllers/CuidadorController');
+const LiberacionController = require('./controllers/LiberacionController');
 
 const app = express();
 const PORT = 3000;
@@ -352,6 +353,79 @@ app.put('/api/veterinario/tratamientos/:id', requireAuth, VeterinarioController.
 // Ruta para completar tratamiento
 app.put('/api/veterinario/completar/:id', requireAuth, VeterinarioController.completarTratamiento);
 
+// Dashboard de liberaciones - CON PROTECCIÓN
+app.get('/dashboard_liberaciones', requireAuth, (req, res) => {
+    res.sendFile(__dirname + '/views/dashboard_liberaciones.html');
+});
+
+// Rutas para el dashboard de liberaciones
+app.get('/api/liberaciones/listos-para-liberar', requireAuth, LiberacionController.getAnimalesListosParaLiberar);
+app.get('/api/liberaciones/animales-liberados', requireAuth, LiberacionController.getAnimalesLiberados);
+app.post('/api/liberaciones', requireAuth, LiberacionController.crearLiberacion);
+
+// Rutas para seguimiento post-liberación
+app.get('/api/liberaciones/seguimientos/:id', requireAuth, LiberacionController.getSeguimientosLiberacion);
+app.post('/api/liberaciones/seguimientos', requireAuth, LiberacionController.agregarSeguimiento);
+
+// Ruta para verificar si el usuario actual es rescatista
+app.get('/api/liberaciones/verificar-rol', requireAuth, async (req, res) => {
+    try {
+        const idUsuario = req.session.user.id;
+        
+        const result = await executeQuery(
+            'SELECT id_rol FROM Empleados_Roles WHERE id_empleado = :1 AND id_rol = 1',
+            [idUsuario]
+        );
+        
+        res.json({
+            success: true,
+            data: {
+                es_rescatista: result.length > 0,
+                id_usuario: idUsuario
+            },
+            message: 'Verificación de rol completada'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error verificando rol',
+            error: error.message
+        });
+    }
+});
+
+// Ruta para obtener lista de rescatistas (para selects)
+app.get('/api/rescatistas', requireAuth, async (req, res) => {
+    try {
+        const rescatistasQuery = `
+            SELECT 
+                e.id_empleado,
+                e.nombre,
+                e.apellidos,
+                e.nombre || ' ' || e.apellidos as nombre_completo
+            FROM Empleados e
+            INNER JOIN Empleados_Roles er ON e.id_empleado = er.id_empleado
+            WHERE er.id_rol = 1
+            ORDER BY e.nombre, e.apellidos
+        `;
+        
+        const rescatistas = await executeQuery(rescatistasQuery);
+        
+        res.json({
+            success: true,
+            data: rescatistas,
+            message: 'Rescatistas obtenidos exitosamente'
+        });
+    } catch (error) {
+        console.error('Error al obtener rescatistas:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    }
+});
+
 // Ruta para obtener información completa del animal 
 app.get('/api/veterinario/animal-completo/:id', requireAuth, async (req, res) => {
     try {
@@ -565,6 +639,7 @@ app.listen(PORT, () => {
     console.log('  • http://localhost:3000/dashboard_rescatista');
     console.log('  • http://localhost:3000/dashboard_veterinario');
     console.log('  • http://localhost:3000/dashboard_cuidador');
+    console.log('  • http://localhost:3000/dashboard_liberaciones');
     console.log('  • http://localhost:3000/logout (cerrar sesión)');
     console.log('Presiona Ctrl+C para detener el servidor');
 });
