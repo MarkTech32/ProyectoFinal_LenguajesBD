@@ -467,192 +467,255 @@ VALUES (19, 'Furosemida', 'Diurético', 20, TO_DATE('2025-11-30', 'YYYY-MM-DD'),
 INSERT INTO Medicamentos (id_medicamento, nombre_medicamento, tipo_medicamento, stock_actual, fecha_vencimiento, proveedor, ubicacion_almacen)
 VALUES (20, 'Omeprazol', 'Protector Gástrico', 35, TO_DATE('2026-04-20', 'YYYY-MM-DD'), 'Farmacéuticos Unidos', 'Estante H2');
 
---Triggers
 
-CREATE OR REPLACE TRIGGER trg_evitar_medicamento_vencido
-BEFORE INSERT OR UPDATE ON Medicamentos
-FOR EACH ROW
-BEGIN
-    IF :NEW.fecha_vencimiento < SYSDATE THEN
-        RAISE_APPLICATION_ERROR(-20001, 'No se puede registrar un medicamento ya vencido.');
-    END IF;
-END;
-/
-
-CREATE OR REPLACE TRIGGER trg_nombre_animal_default
-BEFORE INSERT ON Animales
-FOR EACH ROW
-BEGIN
-    IF :NEW.nombre IS NULL THEN
-        :NEW.nombre := 'Sin Nombre';
-    END IF;
-END;
-/
-
-CREATE OR REPLACE TRIGGER trg_validar_fechas_tratamiento
-BEFORE INSERT OR UPDATE ON Tratamientos
-FOR EACH ROW
-BEGIN
-    IF :NEW.fecha_fin IS NOT NULL AND :NEW.fecha_inicio IS NOT NULL THEN
-        IF :NEW.fecha_fin < :NEW.fecha_inicio THEN
-            RAISE_APPLICATION_ERROR(-20002, 'La fecha de fin no puede ser anterior a la fecha de inicio.');
-        END IF;
-    END IF;
-END;
-/
-
-CREATE OR REPLACE TRIGGER trg_normalizar_correo
-BEFORE INSERT OR UPDATE ON Empleados
-FOR EACH ROW
-BEGIN
-    :NEW.correo := LOWER(:NEW.correo);
-END;
-/
-
-CREATE OR REPLACE TRIGGER trg_validar_diagnostico
-BEFORE INSERT OR UPDATE ON Estados_Salud
-FOR EACH ROW
-BEGIN
-    IF :NEW.tipo_problema IS NOT NULL AND :NEW.diagnostico IS NULL THEN
-        RAISE_APPLICATION_ERROR(-20003, 'Debe ingresar un diagnóstico si se reporta un problema.');
-    END IF;
-END;
-/
-
-CREATE OR REPLACE TRIGGER trg_validar_estado_liberacion
-BEFORE INSERT ON Liberaciones
+-- TRIGGER: Crear tratamiento automático cuando se rescata un animal
+CREATE OR REPLACE TRIGGER trg_crear_tratamiento_automatico
+AFTER INSERT ON Animales
 FOR EACH ROW
 DECLARE
-    v_estado_tratamiento VARCHAR2(50);
+    v_next_tratamiento_id NUMBER;
 BEGIN
-    SELECT estado_tratamiento INTO v_estado_tratamiento
-    FROM Tratamientos
-    WHERE id_animal = :NEW.id_animal
-    ORDER BY fecha_inicio DESC
-    FETCH FIRST 1 ROWS ONLY;
+    -- Obtener próximo ID de tratamiento
+    SELECT NVL(MAX(id_tratamiento), 0) + 1 
+    INTO v_next_tratamiento_id 
+    FROM Tratamientos;
+    
+    -- Crear tratamiento automático en estado PENDIENTE
+    INSERT INTO Tratamientos (
+        id_tratamiento, 
+        id_animal, 
+        estado_tratamiento, 
+        observaciones_cuidado
+    ) VALUES (
+        v_next_tratamiento_id,
+        :NEW.id_animal,
+        'PENDIENTE',
+        'Tratamiento creado automáticamente tras rescate - Pendiente de evaluación veterinaria'
+    );
+    
+    DBMS_OUTPUT.PUT_LINE('Tratamiento ID ' || v_next_tratamiento_id || 
+                         ' creado automáticamente para animal ' || :NEW.nombre);
+END;
+/
 
-    IF v_estado_tratamiento != 'COMPLETADO' THEN
-        RAISE_APPLICATION_ERROR(-20004, 'El animal no puede ser liberado hasta completar el tratamiento.');
+-- TRIGGER: Log de cambios de estado en tratamientos
+CREATE OR REPLACE TRIGGER trg_log_cambio_estado_tratamiento
+AFTER UPDATE OF estado_tratamiento ON Tratamientos
+FOR EACH ROW
+WHEN (OLD.estado_tratamiento != NEW.estado_tratamiento)
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('CAMBIO DE ESTADO - Tratamiento ID: ' || :NEW.id_tratamiento || 
+                         ' | De: ' || :OLD.estado_tratamiento || 
+                         ' | A: ' || :NEW.estado_tratamiento ||
+                         ' | Fecha: ' || TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI'));
+END;
+/
+
+-- 1. CURSOR: Generar reporte de animales por veterinario
+CREATE OR REPLACE PROCEDURE sp_reporte_animales_por_veterinario AS
+    CURSOR c_veterinarios IS
+        SELECT DISTINCT 
+            e.id_empleado,
+            e.nombre || ' ' || e.apellidos as nombre_completo
+        FROM Empleados e
+        INNER JOIN Empleados_Roles er ON e.id_empleado = er.id_empleado
+        WHERE er.id_rol = 2; -- Veterinarios
+
+    CURSOR c_animales_veterinario(p_id_veterinario NUMBER) IS
+        SELECT 
+            a.nombre as nombre_animal,
+            esp.nombre_cientifico,
+            t.estado_tratamiento,
+            t.fecha_inicio
+        FROM Tratamientos t
+        INNER JOIN Animales a ON t.id_animal = a.id_animal
+        INNER JOIN Especies esp ON a.id_especie = esp.id_especie
+        WHERE t.id_veterinario = p_id_veterinario
+        ORDER BY t.fecha_inicio DESC;
+
+    v_total_animales NUMBER := 0;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('=== REPORTE DE ANIMALES POR VETERINARIO ===');
+    DBMS_OUTPUT.PUT_LINE('Fecha: ' || TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI'));
+    DBMS_OUTPUT.PUT_LINE('');
+
+    FOR veterinario IN c_veterinarios LOOP
+        DBMS_OUTPUT.PUT_LINE('VETERINARIO: ' || veterinario.nombre_completo);
+        DBMS_OUTPUT.PUT_LINE('----------------------------------------');
+        
+        v_total_animales := 0;
+        
+        FOR animal IN c_animales_veterinario(veterinario.id_empleado) LOOP
+            v_total_animales := v_total_animales + 1;
+            DBMS_OUTPUT.PUT_LINE('  ' || v_total_animales || '. ' || animal.nombre_animal || 
+                               ' (' || animal.nombre_cientifico || ')');
+            DBMS_OUTPUT.PUT_LINE('     Estado: ' || animal.estado_tratamiento || 
+                               ' | Inicio: ' || TO_CHAR(animal.fecha_inicio, 'DD/MM/YYYY'));
+        END LOOP;
+        
+        IF v_total_animales = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('  No hay animales asignados');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('  TOTAL ANIMALES: ' || v_total_animales);
+        END IF;
+        
+        DBMS_OUTPUT.PUT_LINE('');
+    END LOOP;
+END;
+/
+
+-- CURSOR: Seguimiento de liberaciones pendientes
+CREATE OR REPLACE PROCEDURE sp_liberaciones_sin_seguimiento AS
+    CURSOR c_liberaciones_sin_seguimiento IS
+        SELECT 
+            l.id_liberacion,
+            a.nombre as nombre_animal,
+            esp.nombre_cientifico,
+            l.fecha_liberacion,
+            l.lugar_liberacion,
+            e.nombre || ' ' || e.apellidos as rescatista,
+            TRUNC(SYSDATE - l.fecha_liberacion) as dias_sin_seguimiento
+        FROM Liberaciones l
+        INNER JOIN Animales a ON l.id_animal = a.id_animal
+        INNER JOIN Especies esp ON a.id_especie = esp.id_especie
+        INNER JOIN Empleados e ON l.id_rescatista = e.id_empleado
+        WHERE NOT EXISTS (
+            SELECT 1 FROM Seguimiento_Post_Liberacion spl 
+            WHERE spl.id_liberacion = l.id_liberacion
+        )
+        AND l.fecha_liberacion < SYSDATE - 7  -- Liberados hace más de 7 días
+        ORDER BY l.fecha_liberacion;
+
+    v_contador NUMBER := 0;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('=== LIBERACIONES SIN SEGUIMIENTO ===');
+    DBMS_OUTPUT.PUT_LINE('Fecha consulta: ' || TO_CHAR(SYSDATE, 'DD/MM/YYYY'));
+    DBMS_OUTPUT.PUT_LINE('');
+
+    FOR liberacion IN c_liberaciones_sin_seguimiento LOOP
+        v_contador := v_contador + 1;
+        
+        DBMS_OUTPUT.PUT_LINE(v_contador || '. ' || liberacion.nombre_animal || 
+                           ' (' || liberacion.nombre_cientifico || ')');
+        DBMS_OUTPUT.PUT_LINE('   Liberado: ' || TO_CHAR(liberacion.fecha_liberacion, 'DD/MM/YYYY') || 
+                           ' en ' || liberacion.lugar_liberacion);
+        DBMS_OUTPUT.PUT_LINE('   Rescatista: ' || liberacion.rescatista);
+        DBMS_OUTPUT.PUT_LINE('   Días sin seguimiento: ' || liberacion.dias_sin_seguimiento);
+        
+        IF liberacion.dias_sin_seguimiento > 30 THEN
+            DBMS_OUTPUT.PUT_LINE('   *** URGENTE: Más de 30 días sin seguimiento ***');
+        ELSIF liberacion.dias_sin_seguimiento > 15 THEN
+            DBMS_OUTPUT.PUT_LINE('   ** ATENCIÓN: Más de 15 días sin seguimiento **');
+        END IF;
+        
+        DBMS_OUTPUT.PUT_LINE('');
+    END LOOP;
+
+    IF v_contador = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('✓ Todas las liberaciones tienen seguimiento adecuado');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('TOTAL LIBERACIONES PENDIENTES: ' || v_contador);
     END IF;
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        NULL; 
-END;
-/
---Cursores
-
-CREATE OR REPLACE PROCEDURE sp_listar_tratamientos_por_animal (
-    p_id_animal IN NUMBER
-) AS
-    CURSOR c_tratamientos IS
-        SELECT id_tratamiento, fecha_inicio, fecha_fin, estado_tratamiento
-        FROM Tratamientos
-        WHERE id_animal = p_id_animal;
-
-    v_id_tratamiento Tratamientos.id_tratamiento%TYPE;
-    v_fecha_inicio Tratamientos.fecha_inicio%TYPE;
-    v_fecha_fin Tratamientos.fecha_fin%TYPE;
-    v_estado Tratamientos.estado_tratamiento%TYPE;
-BEGIN
-    OPEN c_tratamientos;
-    LOOP
-        FETCH c_tratamientos INTO v_id_tratamiento, v_fecha_inicio, v_fecha_fin, v_estado;
-        EXIT WHEN c_tratamientos%NOTFOUND;
-
-        DBMS_OUTPUT.PUT_LINE('Tratamiento ID: ' || v_id_tratamiento ||
-                             ' | Inicio: ' || v_fecha_inicio ||
-                             ' | Fin: ' || v_fecha_fin ||
-                             ' | Estado: ' || v_estado);
-    END LOOP;
-    CLOSE c_tratamientos;
 END;
 /
 
-CREATE OR REPLACE PROCEDURE sp_medicamentos_por_vencer IS
-    CURSOR c_meds IS
-        SELECT nombre, fecha_vencimiento
+-- CURSOR: Estado actual del centro de rescate
+CREATE OR REPLACE PROCEDURE sp_estado_centro_rescate AS
+    CURSOR c_estadisticas IS
+        SELECT 
+            COUNT(CASE WHEN t.estado_tratamiento = 'PENDIENTE' THEN 1 END) as pendientes,
+            COUNT(CASE WHEN t.estado_tratamiento = 'EN_TRATAMIENTO' THEN 1 END) as en_tratamiento,
+            COUNT(CASE WHEN t.estado_tratamiento = 'COMPLETADO' THEN 1 END) as completados
+        FROM Tratamientos t;
+
+    CURSOR c_medicamentos_criticos IS
+        SELECT nombre_medicamento, stock_actual
         FROM Medicamentos
-        WHERE fecha_vencimiento BETWEEN SYSDATE AND SYSDATE + 30;
+        WHERE stock_actual <= 10
+        ORDER BY stock_actual;
 
-    v_nombre Medicamentos.nombre%TYPE;
-    v_fecha Medicamentos.fecha_vencimiento%TYPE;
+    v_pendientes NUMBER;
+    v_en_tratamiento NUMBER;
+    v_completados NUMBER;
+    v_total_liberaciones NUMBER;
 BEGIN
-    OPEN c_meds;
-    LOOP
-        FETCH c_meds INTO v_nombre, v_fecha;
-        EXIT WHEN c_meds%NOTFOUND;
+    DBMS_OUTPUT.PUT_LINE('=== ESTADO DEL CENTRO DE RESCATE ===');
+    DBMS_OUTPUT.PUT_LINE('Fecha: ' || TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI'));
+    DBMS_OUTPUT.PUT_LINE('');
 
-        DBMS_OUTPUT.PUT_LINE('Medicamento: ' || v_nombre ||
-                             ' | Vence: ' || TO_CHAR(v_fecha, 'YYYY-MM-DD'));
+    -- Estadísticas de tratamientos
+    OPEN c_estadisticas;
+    FETCH c_estadisticas INTO v_pendientes, v_en_tratamiento, v_completados;
+    CLOSE c_estadisticas;
+
+    DBMS_OUTPUT.PUT_LINE('TRATAMIENTOS:');
+    DBMS_OUTPUT.PUT_LINE('  Pendientes de evaluación: ' || v_pendientes);
+    DBMS_OUTPUT.PUT_LINE('  En tratamiento activo: ' || v_en_tratamiento);
+    DBMS_OUTPUT.PUT_LINE('  Completados: ' || v_completados);
+    
+    -- Total de liberaciones
+    SELECT COUNT(*) INTO v_total_liberaciones FROM Liberaciones;
+    DBMS_OUTPUT.PUT_LINE('  Animales liberados: ' || v_total_liberaciones);
+    DBMS_OUTPUT.PUT_LINE('');
+
+    -- Medicamentos con stock crítico
+    DBMS_OUTPUT.PUT_LINE('MEDICAMENTOS CON STOCK CRÍTICO (≤10):');
+    FOR medicamento IN c_medicamentos_criticos LOOP
+        DBMS_OUTPUT.PUT_LINE('  ⚠ ' || medicamento.nombre_medicamento || 
+                           ': ' || medicamento.stock_actual || ' unidades');
     END LOOP;
-    CLOSE c_meds;
+    
+    DBMS_OUTPUT.PUT_LINE('');
+    DBMS_OUTPUT.PUT_LINE('=== FIN DEL REPORTE ===');
 END;
 /
 
-CREATE OR REPLACE PROCEDURE sp_animales_en_rescate IS
-    CURSOR c_animales IS
-        SELECT id_animal, especie, nombre
-        FROM Animales
-        WHERE estado_actual IN ('Rescatado', 'En evaluación');
-
-    v_id Animales.id_animal%TYPE;
-    v_especie Animales.especie%TYPE;
-    v_nombre Animales.nombre%TYPE;
+-- Expresion Regular: Extraer ubicación específica de lugares de rescate
+CREATE OR REPLACE FUNCTION fn_extraer_provincia(p_lugar VARCHAR2) RETURN VARCHAR2 IS
+    v_provincia VARCHAR2(50);
 BEGIN
-    OPEN c_animales;
-    LOOP
-        FETCH c_animales INTO v_id, v_especie, v_nombre;
-        EXIT WHEN c_animales%NOTFOUND;
-
-        DBMS_OUTPUT.PUT_LINE('Animal ID: ' || v_id || ' | Especie: ' || v_especie || ' | Nombre: ' || v_nombre);
-    END LOOP;
-    CLOSE c_animales;
+    -- Buscar provincias de Costa Rica en el texto
+    CASE 
+        WHEN REGEXP_LIKE(p_lugar, 'San José|San Jose', 'i') THEN v_provincia := 'San José';
+        WHEN REGEXP_LIKE(p_lugar, 'Alajuela', 'i') THEN v_provincia := 'Alajuela';
+        WHEN REGEXP_LIKE(p_lugar, 'Cartago', 'i') THEN v_provincia := 'Cartago';
+        WHEN REGEXP_LIKE(p_lugar, 'Heredia', 'i') THEN v_provincia := 'Heredia';
+        WHEN REGEXP_LIKE(p_lugar, 'Guanacaste', 'i') THEN v_provincia := 'Guanacaste';
+        WHEN REGEXP_LIKE(p_lugar, 'Puntarenas', 'i') THEN v_provincia := 'Puntarenas';
+        WHEN REGEXP_LIKE(p_lugar, 'Limón|Limon', 'i') THEN v_provincia := 'Limón';
+        ELSE v_provincia := 'No identificada';
+    END CASE;
+    
+    RETURN v_provincia;
 END;
 /
 
-CREATE OR REPLACE PROCEDURE sp_historial_estado_salud (
-    p_id_animal IN NUMBER
-) AS
-    CURSOR c_estado IS
-        SELECT tipo_problema, diagnostico, fecha_registro
-        FROM Estados_Salud
-        WHERE id_animal = p_id_animal
-        ORDER BY fecha_registro;
+-- Ejemplo de uso de la función
+SELECT 
+    id_rescate,
+    lugar,
+    fn_extraer_provincia(lugar) as provincia_identificada
+FROM Rescates;
 
-    v_problema Estados_Salud.tipo_problema%TYPE;
-    v_diag Estados_Salud.diagnostico%TYPE;
-    v_fecha Estados_Salud.fecha_registro%TYPE;
-BEGIN
-    OPEN c_estado;
-    LOOP
-        FETCH c_estado INTO v_problema, v_diag, v_fecha;
-        EXIT WHEN c_estado%NOTFOUND;
 
-        DBMS_OUTPUT.PUT_LINE('Problema: ' || v_problema ||
-                             ' | Diagnóstico: ' || v_diag ||
-                             ' | Fecha: ' || TO_CHAR(v_fecha, 'YYYY-MM-DD'));
-    END LOOP;
-    CLOSE c_estado;
-END;
-/
-
---Expresiones regulares
-SELECT nombre
-FROM Animales
-WHERE REGEXP_LIKE(nombre, '^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$');
-
-SELECT nombre, correo
-FROM Empleados
-WHERE NOT REGEXP_LIKE(correo, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
-
-SELECT
-    id_estado,
-    REGEXP_REPLACE(diagnostico, '[^A-Za-z0-9\s]', '') AS diagnostico_limpio
-FROM Estados_Salud;
-
-SELECT nombre
-FROM Medicamentos
-WHERE REGEXP_LIKE(nombre, '^Anti.*ina$');
+-- Expresion Regular: Extraer información de diagnósticos médicos
+SELECT 
+    id_estado_salud,
+    diagnostico as diagnostico_original,
+    -- Buscar palabras clave médicas
+    CASE 
+        WHEN REGEXP_LIKE(diagnostico, 'fractura|quebrado|roto', 'i') THEN 'FRACTURA'
+        WHEN REGEXP_LIKE(diagnostico, 'herida|cortada|lesión', 'i') THEN 'HERIDA'
+        WHEN REGEXP_LIKE(diagnostico, 'infección|bacteria|virus', 'i') THEN 'INFECCIÓN'
+        WHEN REGEXP_LIKE(diagnostico, 'desnutrición|delgado|peso', 'i') THEN 'DESNUTRICIÓN'
+        ELSE 'OTRO'
+    END as categoria_diagnostico,
+    -- Extraer números (posible edad, peso, etc.)
+    REGEXP_SUBSTR(diagnostico, '[0-9]+') as numero_encontrado,
+    -- Limpiar caracteres especiales para reporte
+    REGEXP_REPLACE(diagnostico, '[^A-Za-z0-9áéíóúñÑ\s]', '') as diagnostico_limpio
+FROM Estados_Salud
+WHERE diagnostico IS NOT NULL;
 
 
 COMMIT;
